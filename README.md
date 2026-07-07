@@ -1,134 +1,199 @@
-# FrameCull AI Flash v0.1.6
+# FrameCull AI
 
-> 本地 AI 筛片与图库整理助手
+> 本地 AI 筛片与图库整理助手 / Local AI photo culling and library cleanup assistant
 
-FrameCull AI Flash 是一款面向摄影师的轻量桌面筛片工具。它围绕 `RAW + JPG` 拍摄工作流设计，把快速看图、AI 复查线索、AI 精选、重复照片清理、人物分片、星级写入和导出整理放在一个工作台里。
+FrameCull AI 是一款面向摄影师的桌面筛片工具。它把快速看图、AI 复查线索、AI 精选、重复照片清理、人物分片、星级写入、Lightroom Classic 交接和导出整理放在一个工作台里，帮助摄影师更快完成大批量照片初筛。
 
-**设计理念**：快速、轻量、稳定。专注筛片和图库整理核心功能，不加载 RAW 调色引擎，启动快、切图快、内存占用低。
+FrameCull AI 不上传照片，也不会替你黑箱删除照片。AI 负责整理线索、排序候选和减少重复劳动，最终保留、弃用、星级和导出判断仍由摄影师完成。
 
-AI 分析在本机运行，不上传照片，也不替你黑箱删除照片。它负责整理线索和候选，最终保留、弃用、星级和导出判断仍由摄影师完成。
+当前提供两个版本：
 
-## 为什么选择 FrameCull AI Flash
+- **FrameCull AI Flash**：轻量快速版，专注本地 AI 筛片、图库整理、人物分片和重复照片清理。
+- **FrameCull AI Pro**：高精度内测版，在 Flash 基础上加入自训练蒸馏 AI 引擎、Pro persona 排序、RAW 监看、自动曝光预览和 LUT 预览。
 
-- **本地运行**：照片分析、评分、人物分片和重复组选优都在本机完成，不上传云端，适合婚礼、写真、商业拍摄和个人图库整理。
-- **轻量快速**：专注筛片核心功能，启动快、切图快、内存占用低。
-- **四种融合算法结合美学模型**：融合 OpenCV YuNet、MediaPipe Face Landmarker、SubjectRanker 和本地画面质量判据，并接入 NIMA MobileNet ONNX 美学模型。
-- **覆盖场景更广**：不只做人像筛片，也能辅助判断空镜、风景、环境人像、背影、旅拍和日常图库照片。
-- **贴近摄影工作流**：胶片栏、方向键切图、星级、筛选、元数据、Lightroom Classic 交接和导出逻辑都尽量贴近 Lightroom / Photoshop ACR。
+## 下载
 
-## AI 引擎亮点
+最新版内测安装包在 GitHub Release：
 
-FrameCull AI Flash 的核心不是单一规则打分，而是四种融合识别算法结合本地美学模型：
+[FrameCull AI 0.1.6 Beta](https://github.com/Ray25010/Frame-Cull-AI/releases/tag/v0.1.6-beta.1)
 
-- **OpenCV YuNet**：快速定位人脸。
-- **MediaPipe Face Landmarker**：判断关键点、眼部状态和闭眼风险。
-- **SubjectRanker**：找出真正需要关注的主体，减少背景人物误报。
-- **本地画面质量判据**：综合失焦、曝光、细节和主体区域风险。
-- **NIMA MobileNet ONNX**：补充画面观感评分，让空镜、风景、背影和环境人像不再只按人脸规则判断。
+- [下载 Flash 版 Windows 安装包](https://github.com/Ray25010/Frame-Cull-AI/releases/download/v0.1.6-beta.1/FrameCull.AI.Flash_0.1.6_x64-setup.exe)
+- [下载 Pro 版 Windows 安装包](https://github.com/Ray25010/Frame-Cull-AI/releases/download/v0.1.6-beta.1/FrameCull.AI.Pro_0.1.6_x64-setup.exe)
 
-AI 会同时看人物状态、画面质量、场景类型、重复照片关系和美学观感，所以它既能服务人像筛片，也更适合作为个人图库管理助手，帮你清理重复、模糊、无用或需要复查的照片。
+## 两个版本怎么选
 
-## 核心功能
+| 版本 | 适合谁 | 主要特点 |
+| --- | --- | --- |
+| Flash | 想要轻量、快速、本地筛片和图库整理的用户 | 安装包更小，启动快，切图快，不包含 RAW 监看引擎 |
+| Pro | 需要更强 AI 精选、低比例筛片召回、RAW 曝光预览和专业工作流的用户 | 自训练蒸馏 AI 引擎，Pro persona 排序，RAW 监看，自动曝光预览，LUT 预览 |
 
-### AI 筛图与图库清理
+两个版本是独立应用。Flash 更轻，Pro 更强；如果你主要看 JPG / RAW 内嵌预览并追求速度，选择 Flash。如果你需要 Pro AI 引擎和 RAW 自动曝光预览，选择 Pro。
 
-- 标记疑似闭眼、失焦、曝光异常、细节丢失等照片。
-- 曝光判断优先作为复查线索：轻中度过暗、过亮但仍有后期空间的照片不会直接判硬伤。
-- 只有超过严格阈值，或经过可恢复性估算后仍有大面积过曝、死黑和主体信息丢失时，才作为重扣分问题。
-- 人像优先看主体，减少背景人物、路人或前景遮挡造成的误报。
-- 风景、空镜、背影和环境人像会结合画面结构、曝光和美学分数判断。
-- 右侧判据页可查看 AI 为什么给出提示。
+## 核心能力
 
-### AI 精选与重复照片
+### AI 筛片
 
-- AI 精选不是简单分数排行，而是先避开明显硬伤，再挑出更值得优先查看的候选。
-- 重复/连拍组会推荐一张可用代表；明显失焦、闭眼、已弃用照片不会成为 best。
-- 普通单张会按用户设置的精选比例补足，适合先拿到一批值得优先看的照片。
-- 重复照片工作台支持分组查看、best 标记、单击同步当前照片、双击进入大图。
+- 标记疑似闭眼、失焦、曝光异常、细节丢失等需要复查的照片。
+- 对人像优先看主体，减少背景人物、路人或前景遮挡造成的误报。
+- 对风景、空镜、背影、环境人像和活动照片，会结合画面结构、曝光和美学线索判断。
+- AI 精选不是简单按分数排序，而是先避开明显硬伤，再给出更值得优先查看的候选。
+
+### 重复照片清理
+
+- 自动识别相似照片、连拍和重复组。
+- 每组推荐一张更值得保留的代表，减少图库里大量近似照片堆积。
+- 重复照片工作台支持分组查看、best 标记、同步当前照片和大图复核。
 
 ### 人物分片
 
 - 自动把当前批次中的同一人物聚为一组。
-- 使用 YuNet 检测、5 点人脸对齐、SFace ONNX identity embedding 和余弦距离聚类。
 - 支持人物命名、合并、拆分和手动移动人脸。
 - 同一张多人照片可以同时归入多个人物组。
-- 支持按人物筛选照片，并按人物导出 JPG 结果。
+- 支持按人物筛选照片并导出结果。
 
 ### RAW + JPG 工作流
 
 - 自动配对同名 RAW + JPG，也保留单独 RAW 或 JPG 文件。
-- RAW 优先读取内嵌 JPG 预览，自动修正方向，并使用本地缓存提升切图速度。
-- 胶片栏、大图、直方图、EXIF、AI 总览和判据集中在同一界面。
 - 支持保留、弃用、未标记、星级、AI 正常、AI 待复查、AI 精选、重复照片、合照等筛选。
+- 支持 JPEG / TIFF / PNG 导出、原片复制或移动、RAW 同名 XMP sidecar。
+- 支持一键打开 Lightroom Classic 到所选照片文件夹，继续后期流程。
 
-**当前支持的 RAW 格式：**
+## Pro AI 引擎
 
-- Canon：CR2、CR3
-- Nikon：NEF、NRW
-- Sony：ARW、SRF、SR2
-- Fujifilm：RAF
-- Olympus / OM System：ORF
-- Panasonic：RW2
-- Samsung：SRW
-- Adobe DNG：DNG
+Pro 版的重点不只是 RAW 监看。它加入了我们自己训练和蒸馏的本地 AI 引擎，用更大的教师模型和人工筛片数据训练出更适合摄影筛片偏好的学生模型，再在本机通过原生 ONNX Runtime 推理。
 
-### 星级、元数据与导出
+Pro 引擎会输出美学、场景、persona 等多头分数，用来辅助低比例 AI 精选排序。它不会覆盖硬伤门禁：明显失焦、闭眼、弃用片和重复组非代表不会因为模型分数高而被强行选入。
 
-- 支持 `0-5` 星级评分。
-- JPEG 星级写入文件元数据；RAW 星级写入同名 `.xmp` sidecar。
-- 支持 JPEG / TIFF / PNG 渲染副本，JPEG 支持 1-100 品质控制。
-- JPEG / TIFF / PNG 可输出 sRGB 或 Adobe RGB (1998)，Adobe RGB 会写入对应 ICC 信息。
-- 支持 JPG / RAW / RAW + JPG 原片复制或移动，移动 RAW 时会带上同名 XMP。
-- Lightroom Classic 交接会写入当前星级、启动 Lightroom，并打开所选照片所在文件夹；不直接修改 Lightroom catalog。
+## 版本文档
 
-## 快速开始
+详细功能和硬件要求请看：
 
-1. **导入照片**：选择照片文件或文件夹，FrameCull AI Flash 会自动配对 RAW + JPG，并递归读取文件夹中的照片。
-2. **快速过片**：用方向键切图，按 `A / D / S` 做保留、弃用、取消标记，按 `0-5` 评分。
-3. **运行 AI 筛图**：获得 AI 待复查、AI 精选、重复照片推荐和单张照片评分。
-4. **查看重点照片**：先看 AI 精选、重复照片 best 和待复查线索，再决定最终保留或弃用。
-5. **按需要分人物**：使用人物分片给客户、家庭成员、模特或活动参与者快速分组。
-6. **导出或交接**：导出 JPEG/TIFF/PNG 副本，复制/移动原片，或打开 Lightroom Classic 继续后期。
+- [Flash 版中文说明](docs/editions/README_FLASH_CN.md)
+- [Pro 版中文说明](docs/editions/README_PRO_CN.md)
 
-## 常用快捷键
+在线教程：
 
-| 按键 | 操作 |
-| --- | --- |
-| `← / →` | 上一张 / 下一张 |
-| `A` | 标记保留 / 精选 |
-| `D` | 标记弃用 |
-| `S` | 取消标记，回到未标记 |
-| `/` | 切换 AI 判据叠加显示 |
-| `0` | 清除星级 |
-| `1-5` | 设置星级 |
-| `Ctrl+A` | 全选当前筛选结果 |
-| `Ctrl+D` | 取消多选 |
-| 鼠标滚轮 | 缩放 |
-| 双击大图 | 重置视图 |
+- [FrameCull AI Flash v0.1.6 简介及教程（金山文档）](https://www.kdocs.cn/l/ckvgLtjq13lO)
+- [FrameCull AI Pro v0.1.6 简介及使用教程（金山文档）](https://www.kdocs.cn/l/ck6O3N1pAKlA)
 
-快捷键可以在设置里重新绑定。
+## 系统要求
 
-## 支持系统与最低运行要求
-
-| 项目 | 最低建议 | 推荐 |
+| 项目 | Flash 建议 | Pro 建议 |
 | --- | --- | --- |
-| 系统 | Windows 10 / 11 64 位 | Windows 11 64 位 |
-| CPU | 4 核 | 8 核或更高 |
-| 内存 | 8 GB | 16 GB 或更高 |
-| 磁盘 | 2 GB 可用空间，建议 SSD | SSD |
-| 显卡 | 无独显要求，集成显卡可运行 | 支持 WebView 硬件加速的集成或独立显卡 |
-| 显示 | 1280x800 | 1920x1080 或更高 |
-| 运行环境 | Windows WebView2 或系统 WebView | 最新系统 WebView |
+| 系统 | Windows 10 / 11 64 位 | Windows 10 / 11 64 位，推荐 Windows 11 |
+| CPU | 4 核起，推荐 8 核或更高 | 8 核起，推荐 12 核或更高 |
+| 内存 | 8 GB 起，推荐 16 GB | 16 GB 起，推荐 32 GB 或更高 |
+| 显卡 | 无独显要求，集成显卡可运行 | NVIDIA GTX 1660 / RTX 2060 / RTX 3050 及以上可用，推荐 RTX 3060 / RTX 4060 及以上；无独显时可 CPU 兜底但会更慢 |
+| 磁盘 | 2 GB 可用空间，建议 SSD | 10 GB 起，推荐 30 GB 以上 SSD 空间用于模型、RAW 监看缓存和导出 |
 
-当前内测版本主要验证平台是 Windows 10 / 11。macOS 和 Linux 源码兼容，正式安装包仍需单独构建和验证。
+## 当前状态
 
-## 项目定位
+FrameCull AI 仍处于内测阶段。当前 Windows 安装包已经可用于测试；macOS 版本需要单独构建和签名验证。
 
-FrameCull AI Flash 是筛片与图库整理工具，不是 RAW 调色软件，也不是 Lightroom catalog 替代品。它的目标是让摄影师更快浏览大量照片，更清楚地做保留、弃用、星级和导出判断，并把整理好的星级、XMP 和文件结果继续交给 Lightroom / ACR 等后期流程。
+欢迎反馈真实筛片需求、测试样片和工作流建议。
 
 ## 联系作者
 
-欢迎联系作者交流真实筛片需求、测试样片和工作流改进，也欢迎一起共建。
-
 - 微信 / 手机同号：`18102631833`
 - 邮箱：`2923834023@qq.com`
+
+---
+
+# FrameCull AI
+
+> Local AI photo culling and library cleanup assistant
+
+FrameCull AI is a desktop culling tool for photographers. It brings fast image review, AI review signals, AI Picks, duplicate cleanup, people grouping, ratings, Lightroom Classic handoff, and export management into one focused workspace.
+
+FrameCull AI runs locally. It does not upload your photos, and it does not silently delete anything for you. The AI helps organize signals, rank candidates, and reduce repetitive work; the final keep, reject, rating, and export decisions remain yours.
+
+Two editions are currently available:
+
+- **FrameCull AI Flash**: the lightweight edition for fast local AI culling, library cleanup, people grouping, and duplicate review.
+- **FrameCull AI Pro**: the high-accuracy beta edition with a self-trained distilled AI engine, Pro persona ranking, RAW monitor preview, auto-exposure preview, and LUT preview.
+
+## Download
+
+Latest beta release:
+
+[FrameCull AI 0.1.6 Beta](https://github.com/Ray25010/Frame-Cull-AI/releases/tag/v0.1.6-beta.1)
+
+- [Download Flash for Windows](https://github.com/Ray25010/Frame-Cull-AI/releases/download/v0.1.6-beta.1/FrameCull.AI.Flash_0.1.6_x64-setup.exe)
+- [Download Pro for Windows](https://github.com/Ray25010/Frame-Cull-AI/releases/download/v0.1.6-beta.1/FrameCull.AI.Pro_0.1.6_x64-setup.exe)
+
+## Which Edition Should I Use?
+
+| Edition | Best for | Highlights |
+| --- | --- | --- |
+| Flash | Users who want a lightweight and fast local culling tool | Smaller installer, quick startup, fast navigation, no RAW monitoring engine |
+| Pro | Users who need stronger AI Picks, low-ratio recall, RAW exposure preview, and a more advanced workflow | Self-trained distilled AI engine, Pro persona ranking, RAW monitor preview, auto-exposure preview, LUT preview |
+
+Flash is lighter. Pro is stronger. Choose Flash if you mainly review JPGs or embedded RAW previews and care most about speed. Choose Pro if you want the Pro AI engine and RAW auto-exposure preview.
+
+## Core Features
+
+### AI Culling
+
+- Flags photos that may need review, such as closed eyes, missed focus, exposure issues, and lost detail.
+- Prioritizes the real subject in portraits to reduce false alarms from background people or foreground occlusion.
+- Handles landscapes, empty scenes, back views, environmental portraits, and event photos with scene, exposure, and aesthetic signals.
+- AI Picks avoid obvious hard faults first, then surface stronger candidates for review.
+
+### Duplicate Cleanup
+
+- Detects similar images, burst sequences, and duplicate groups.
+- Recommends a better representative for each group.
+- Provides a duplicate review workspace for grouped review, best marking, current-photo sync, and large preview checks.
+
+### People Grouping
+
+- Groups the same person across the current batch.
+- Supports naming, merging, splitting, and manually moving faces.
+- Allows one group photo to belong to multiple people groups.
+- Supports filtering and exporting by person.
+
+### RAW + JPG Workflow
+
+- Pairs matching RAW + JPG files while keeping standalone RAW or JPG files.
+- Supports keep, reject, unmarked, star rating, AI normal, AI review, AI Pick, duplicate, and group-photo filters.
+- Supports JPEG / TIFF / PNG export, original file copy or move, and RAW sidecar XMP.
+- Opens Lightroom Classic to the selected photo folder for downstream editing.
+
+## Pro AI Engine
+
+Pro is not just Flash with RAW preview. It adds a self-trained distilled local AI engine. Larger teacher models and human culling data are used offline to train a smaller student model that better matches real photo-culling preferences, then the app runs that model locally through native ONNX Runtime.
+
+The Pro engine produces aesthetic, scene, and persona scores for AI Pick ranking, especially at stricter pick ratios. It does not override hard gates: obviously out-of-focus images, closed-eye hard faults, rejected photos, and duplicate non-representatives are still blocked by the rule layer.
+
+## Edition Docs
+
+Detailed feature notes and hardware requirements:
+
+- [Flash edition Chinese guide](docs/editions/README_FLASH_CN.md)
+- [Pro edition Chinese guide](docs/editions/README_PRO_CN.md)
+
+Online Chinese tutorials:
+
+- [FrameCull AI Flash v0.1.6 guide on WPS Docs](https://www.kdocs.cn/l/ckvgLtjq13lO)
+- [FrameCull AI Pro v0.1.6 guide on WPS Docs](https://www.kdocs.cn/l/ck6O3N1pAKlA)
+
+## Requirements
+
+| Item | Flash Recommendation | Pro Recommendation |
+| --- | --- | --- |
+| OS | Windows 10 / 11 64-bit | Windows 10 / 11 64-bit, Windows 11 recommended |
+| CPU | 4 cores minimum, 8+ cores recommended | 8 cores minimum, 12+ cores recommended |
+| Memory | 8 GB minimum, 16 GB recommended | 16 GB minimum, 32 GB or more recommended |
+| GPU | No discrete GPU required | NVIDIA GTX 1660 / RTX 2060 / RTX 3050 or above; RTX 3060 / RTX 4060 or above recommended. CPU fallback is available but slower |
+| Disk | 2 GB free space, SSD recommended | 10 GB minimum, 30 GB or more SSD space recommended for models, RAW preview cache, and exports |
+
+## Status
+
+FrameCull AI is currently in beta. Windows installers are available for testing. macOS builds require separate build and signing validation.
+
+Feedback on real culling needs, test samples, and workflow improvements is welcome.
+
+## Contact
+
+- WeChat / phone: `18102631833`
+- Email: `2923834023@qq.com`
