@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Channel, invoke } from '@tauri-apps/api/core';
 import { revealItemInDir } from '@tauri-apps/plugin-opener';
 import { open } from '@tauri-apps/plugin-dialog';
@@ -25,7 +25,7 @@ import { usePhotoNavigation } from './hooks/usePhotoNavigation';
 import { useAiCulling } from './hooks/useAiCulling';
 import { usePeopleSplit } from './hooks/usePeopleSplit';
 import { renderGroupForExport } from './utils/aiImage';
-import { clearAppCaches } from './utils/cacheMaintenance';
+import { clearAppCaches, getAppCacheUsage, type AppCacheUsage } from './utils/cacheMaintenance';
 import { hasTauriRuntime } from './utils/tauriRuntime';
 import { cancelRawPreloads, decodeRawFile, preloadRawWindow, subscribeRawDecodeProgress } from './utils/rawLoader';
 import { getDisplayPreviewUrl, loadDisplayImage, preloadDisplayWindow } from './utils/imagePreloader';
@@ -34,7 +34,6 @@ import { buildEditionAiPickedPhotoIds } from '@edition/buildAiPickedPhotoIds';
 import { useRawMonitorFeature } from '@edition/useRawMonitorFeature';
 
 const LANGUAGE_STORAGE_KEY = 'framecull-language';
-const ANIMATION_STORAGE_KEY = 'framecull-enable-animation';
 const LIGHTROOM_PATH_STORAGE_KEY = 'framecull-lightroom-classic-path';
 
 const SPLASH_MIN_VISIBLE_MS = 2400;
@@ -99,16 +98,19 @@ async function launchLightroomAfterExport(options: ExportOptions): Promise<Pick<
   }
 }
 
+function formatBytesForLog(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
+
 const App: React.FC = () => {
   // Settings
   const { theme, themeMode, setThemeMode } = useTheme();
   const [language, setLanguage] = useState<Language>(() => {
     const saved = readStorage(LANGUAGE_STORAGE_KEY);
     return (saved === 'zh' || saved === 'en') ? saved : 'zh';
-  });
-  const [enableAnimation, setEnableAnimation] = useState<boolean>(() => {
-    const saved = readStorage(ANIMATION_STORAGE_KEY);
-    return saved === null ? true : saved === 'true';
   });
   const [viewerAiMode, setViewerAiMode] = useState<ViewerAiMode>('AI');
   const [rawDecodeProgress, setRawDecodeProgress] = useState<RawDecodeProgress>({
@@ -157,7 +159,6 @@ const App: React.FC = () => {
   );
   const navigation = usePhotoNavigation(
     photoState.photos,
-    enableAnimation,
     aiCulling.duplicatePhotoIds,
     duplicateBestPhotoIds,
     aiCulling.duplicateStatus === 'READY',
@@ -168,6 +169,8 @@ const App: React.FC = () => {
   });
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('CULLING');
   const [showAiSettings, setShowAiSettings] = useState(false);
+  const [appCacheUsage, setAppCacheUsage] = useState<AppCacheUsage | null>(null);
+  const [appCacheUsageBusy, setAppCacheUsageBusy] = useState(false);
   const t = getTranslations(language);
   const runningInTauri = hasTauriRuntime();
 
@@ -217,29 +220,34 @@ const App: React.FC = () => {
   });
   const {
     rawEngineSettings,
-    rawMonitorSettings,
     rawEngineBusy,
     rawMonitorProgress,
-    rawCacheReady,
-    autoExposureCacheReady,
     rawMonitorCacheSizeBytes,
     rawMonitorCacheBusy,
     viewerPreview: rawMonitorPreview,
-    onRawMonitorEnabledChange: handleRawMonitorEnabledChange,
-    onRawMonitorAutoExposureChange: handleRawMonitorAutoExposureChange,
-    onRawMonitorLutEnabledChange: handleRawMonitorLutEnabledChange,
-    onChooseMonitorLut: handleChooseMonitorLut,
-    onRemoveMonitorLut: handleRemoveMonitorLut,
-    onRawMonitorLutStrengthChange: handleRawMonitorLutStrengthChange,
     onDetectRawEngine: handleDetectRawEngine,
     onChooseRawEngine: handleChooseRawEngine,
     onClearRawEngine: handleClearRawEngine,
-    onGenerateRawMonitorCache: handleGenerateRawMonitorCache,
-    onCancelRawMonitorCache: handleCancelRawMonitorCache,
     onRefreshRawMonitorCacheSize: handleRefreshRawMonitorCacheSize,
     onCleanupRawMonitorCache: handleCleanupRawMonitorCache,
     clearCache: clearRawMonitorCache,
   } = rawMonitorFeature;
+
+  const refreshAppCacheUsage = useCallback(async () => {
+    setAppCacheUsageBusy(true);
+    try {
+      setAppCacheUsage(await getAppCacheUsage());
+    } catch (error) {
+      console.warn('Failed to refresh app cache usage:', error);
+    } finally {
+      setAppCacheUsageBusy(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!modalState.showSettings) return;
+    void refreshAppCacheUsage();
+  }, [modalState.showSettings, refreshAppCacheUsage]);
 
 
   useEffect(() => {
@@ -360,11 +368,6 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
   }, [language]);
-
-  // Persist animation setting
-  useEffect(() => {
-    localStorage.setItem(ANIMATION_STORAGE_KEY, String(enableAnimation));
-  }, [enableAnimation]);
 
   useEffect(() => subscribeRawDecodeProgress(setRawDecodeProgress), []);
 
@@ -1094,17 +1097,21 @@ const App: React.FC = () => {
     });
   };
 
-  const handleClearCaches = () => {
-    const result = clearAppCaches();
-    clearRawMonitorCache();
+  const handleClearCaches = async () => {
+    const result = await clearAppCaches();
+    await clearRawMonitorCache();
     photoState.clearCurrentSessionMarks();
+    void refreshAppCacheUsage();
+    if (handleRefreshRawMonitorCacheSize) {
+      void handleRefreshRawMonitorCacheSize();
+    }
     notify({
       kind: 'success',
       title: language === 'zh' ? '\u7f13\u5b58\u5df2\u6e05\u9664' : 'Caches cleared',
       message: language === 'zh'
         ? '\u5df2\u6e05\u9664 AI \u5206\u6790\u3001\u7b5b\u7247\u72b6\u6001\u548c\u9884\u89c8\u7f13\u5b58\u3002\u8bed\u8a00\u3001\u4e3b\u9898\u3001AI \u8bbe\u7f6e\u548c Lightroom \u8def\u5f84\u5df2\u4fdd\u7559\u3002'
         : 'AI analysis, culling state, and preview caches were cleared. Language, theme, AI settings, and Lightroom path were kept.',
-      detail: `persistent=${result.clearedPersistent}; memory=${result.clearedMemory}`,
+      detail: `persistent=${result.clearedPersistent}; disk=${formatBytesForLog(result.clearedDiskBytes)}; memory=${result.clearedMemory}`,
       autoDismissMs: 2600,
     });
   };
@@ -1280,7 +1287,6 @@ const App: React.FC = () => {
             ) : navigation.currentPhoto && (
               <Viewer
                 group={navigation.currentPhoto}
-                animationClass={navigation.animationClass}
                 onUpdateSelection={(state: SelectionState) => {
                   navigation.updateSelectionWithAnimation(state, photoState.updatePhotoSelection);
                 }}
@@ -1376,8 +1382,6 @@ const App: React.FC = () => {
         language={language}
         onThemeModeChange={setThemeMode}
         onLanguageChange={setLanguage}
-        enableAnimation={enableAnimation}
-        onEnableAnimationChange={setEnableAnimation}
         orphanStats={{
           raw: photoState.stats.orphanRaw,
           jpg: photoState.stats.orphanJpg,
@@ -1385,25 +1389,17 @@ const App: React.FC = () => {
         onDeleteOrphanRaw={() => handleOrphanDeleteStart('RAW')}
         onDeleteOrphanJpg={() => handleOrphanDeleteStart('JPG')}
         onClearCaches={handleClearCaches}
+        appCacheUsage={appCacheUsage}
+        appCacheUsageBusy={appCacheUsageBusy}
+        onRefreshAppCacheUsage={() => { void refreshAppCacheUsage(); }}
         rawEngineSettings={rawEngineSettings}
-        rawMonitorSettings={rawMonitorSettings}
         rawEngineBusy={rawEngineBusy}
         rawMonitorProgress={rawMonitorProgress}
-        rawCacheReady={rawCacheReady}
-        autoExposureCacheReady={autoExposureCacheReady}
         rawMonitorCacheSizeBytes={rawMonitorCacheSizeBytes}
         rawMonitorCacheBusy={rawMonitorCacheBusy}
-        onRawMonitorEnabledChange={handleRawMonitorEnabledChange}
-        onRawMonitorAutoExposureChange={handleRawMonitorAutoExposureChange}
-        onRawMonitorLutEnabledChange={handleRawMonitorLutEnabledChange}
-        onChooseMonitorLut={handleChooseMonitorLut ? () => { void handleChooseMonitorLut(); } : undefined}
-        onRemoveMonitorLut={handleRemoveMonitorLut}
-        onRawMonitorLutStrengthChange={handleRawMonitorLutStrengthChange}
         onDetectRawEngine={handleDetectRawEngine ? () => { void handleDetectRawEngine(); } : undefined}
         onChooseRawEngine={handleChooseRawEngine ? () => { void handleChooseRawEngine(); } : undefined}
         onClearRawEngine={handleClearRawEngine ? () => { void handleClearRawEngine(); } : undefined}
-        onGenerateRawMonitorCache={handleGenerateRawMonitorCache ? () => { void handleGenerateRawMonitorCache(); } : undefined}
-        onCancelRawMonitorCache={handleCancelRawMonitorCache ? () => { void handleCancelRawMonitorCache(); } : undefined}
         onRefreshRawMonitorCacheSize={handleRefreshRawMonitorCacheSize ? () => { void handleRefreshRawMonitorCacheSize(); } : undefined}
         onCleanupRawMonitorCache={handleCleanupRawMonitorCache ? () => { void handleCleanupRawMonitorCache(); } : undefined}
         onClearRawMonitorCache={() => { void clearRawMonitorCache(); }}

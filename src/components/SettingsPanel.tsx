@@ -15,6 +15,7 @@ import {
   MonitorCog,
   Moon,
   Palette,
+  RefreshCw,
   Rocket,
   ShieldCheck,
   Sparkles,
@@ -32,7 +33,8 @@ import { AppIcon } from './ui/AppIcon';
 import { chromeGlass, glassInteractive, glassSubtle, modalBackdrop } from './ui/chrome';
 import { APP_VERSION, IS_PRO_EDITION, PRODUCT_DISPLAY_NAME, PRODUCT_FOOTER } from '../utils/appInfo';
 import { readStorage } from '../utils/storage';
-import type { ProInferCapabilities, RawEngineSettings, RawMonitorCacheProgress, RawMonitorSettings } from '../types';
+import type { AppCacheUsage } from '../utils/cacheMaintenance';
+import type { ProInferCapabilities, RawEngineSettings, RawMonitorCacheProgress } from '../types';
 import type { AboutPanelContent } from '../types/aboutPanelContent';
 import { extendAboutPanelContent } from '@edition/extendAboutPanelContent';
 import { RawEngineSection } from '@edition/RawEngineSection';
@@ -54,8 +56,6 @@ interface SettingsPanelProps {
   language: Language;
   onThemeModeChange: (mode: ThemeMode) => void;
   onLanguageChange: (language: Language) => void;
-  enableAnimation: boolean;
-  onEnableAnimationChange: (enabled: boolean) => void;
   orphanStats: {
     raw: number;
     jpg: number;
@@ -63,25 +63,17 @@ interface SettingsPanelProps {
   onDeleteOrphanRaw: () => void;
   onDeleteOrphanJpg: () => void;
   onClearCaches: () => void;
+  appCacheUsage?: AppCacheUsage | null;
+  appCacheUsageBusy?: boolean;
+  onRefreshAppCacheUsage?: () => void;
   rawEngineSettings?: RawEngineSettings | null;
-  rawMonitorSettings?: RawMonitorSettings | null;
   rawEngineBusy?: boolean;
   rawMonitorProgress?: RawMonitorCacheProgress;
-  rawCacheReady?: boolean;
-  autoExposureCacheReady?: boolean;
   rawMonitorCacheSizeBytes?: number | null;
   rawMonitorCacheBusy?: boolean;
-  onRawMonitorEnabledChange?: (enabled: boolean) => void;
-  onRawMonitorAutoExposureChange?: (enabled: boolean) => void;
-  onRawMonitorLutEnabledChange?: (enabled: boolean) => void;
-  onChooseMonitorLut?: () => void;
-  onRemoveMonitorLut?: () => void;
-  onRawMonitorLutStrengthChange?: (strength: number) => void;
   onDetectRawEngine?: () => void;
   onChooseRawEngine?: () => void;
   onClearRawEngine?: () => void;
-  onGenerateRawMonitorCache?: () => void;
-  onCancelRawMonitorCache?: () => void;
   onRefreshRawMonitorCacheSize?: () => void;
   onCleanupRawMonitorCache?: () => void;
   onClearRawMonitorCache?: () => void;
@@ -97,10 +89,19 @@ const settingsCopy = {
     cacheTitle: '缓存',
     cacheDescription: '清除 AI 分析、筛片状态和预览缓存，不会删除照片，也不会重置语言、主题、AI 设置或 Lightroom 路径。',
     clearCaches: '清除缓存',
+    cacheUsage: '\u5f53\u524d\u5360\u7528',
+    cacheCalculating: '\u6b63\u5728\u8ba1\u7b97...',
+    cacheUnknown: '\u5c1a\u672a\u7edf\u8ba1',
+    cachePersistent: '\u5206\u6790/\u7b5b\u7247\u72b6\u6001',
+    cacheDisk: '\u9884\u89c8\u7f13\u5b58',
+    cacheRefresh: '\u5237\u65b0',
+    cachePersistentHint: '\u4ec5\u5305\u542b AI \u5206\u6790\u7ed3\u679c\u548c\u672c\u5730\u7b5b\u7247\u72b6\u6001\uff0c\u4e0d\u5305\u542b\u7167\u7247\u6587\u4ef6\u3002',
+    cacheDiskHint: '\u8f6f\u4ef6\u751f\u6210\u7684\u7f29\u7565\u56fe\u548c\u9884\u89c8\u6587\u4ef6\u7f13\u5b58\u3002\u6e05\u7406\u540e\u4e0d\u4f1a\u5220\u9664\u539f\u7247\uff0c\u9700\u8981\u65f6\u4f1a\u91cd\u65b0\u751f\u6210\u3002',
+    cacheClearHint: '\u6e05\u9664 AI \u5206\u6790\u3001\u7b5b\u7247\u72b6\u6001\u548c\u8f6f\u4ef6\u9884\u89c8\u7f13\u5b58\uff0c\u4e0d\u5220\u9664\u539f\u7247\u548c\u7528\u6237\u8bbe\u7f6e\u3002',
     lightroom: 'Lightroom Classic',
     lightroomDescription: '用于写入星级后自动启动 Lightroom，并打开所选照片所在文件夹。',
     lightroomDetect: '自动检测',
-    lightroomChoose: '选择 Lightroom.exe',
+    lightroomChoose: '\u9009\u62e9',
     lightroomClear: '清除',
     lightroomDetected: '已检测到 Lightroom Classic',
     lightroomNotFound: '未检测到 Lightroom Classic',
@@ -131,10 +132,19 @@ const settingsCopy = {
     cacheTitle: 'Cache',
     cacheDescription: 'Clears AI analysis, culling state, and preview caches without deleting photos or resetting language, theme, AI settings, or Lightroom path.',
     clearCaches: 'Clear caches',
+    cacheUsage: 'Current usage',
+    cacheCalculating: 'Calculating...',
+    cacheUnknown: 'Not calculated',
+    cachePersistent: 'Analysis / culling state',
+    cacheDisk: 'Preview cache',
+    cacheRefresh: 'Refresh',
+    cachePersistentHint: 'AI analysis results and local culling state only. Photo files are not included.',
+    cacheDiskHint: 'Generated thumbnails and preview-file cache. Clearing it never deletes originals; previews will be rebuilt when needed.',
+    cacheClearHint: 'Clears AI analysis, culling state, and generated preview caches without deleting photos or user settings.',
     lightroom: 'Lightroom Classic',
     lightroomDescription: 'Used to launch Lightroom automatically and open the source folder after writing ratings.',
     lightroomDetect: 'Auto detect',
-    lightroomChoose: 'Choose Lightroom.exe',
+    lightroomChoose: 'Choose',
     lightroomClear: 'Clear',
     lightroomDetected: 'Lightroom Classic detected',
     lightroomNotFound: 'Lightroom Classic not found',
@@ -425,31 +435,21 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   language,
   onThemeModeChange,
   onLanguageChange,
-  enableAnimation,
-  onEnableAnimationChange,
   orphanStats,
   onDeleteOrphanRaw,
   onDeleteOrphanJpg,
   onClearCaches,
+  appCacheUsage,
+  appCacheUsageBusy = false,
+  onRefreshAppCacheUsage,
   rawEngineSettings,
-  rawMonitorSettings,
   rawEngineBusy = false,
   rawMonitorProgress,
-  rawCacheReady = false,
-  autoExposureCacheReady = false,
   rawMonitorCacheSizeBytes,
   rawMonitorCacheBusy = false,
-  onRawMonitorEnabledChange,
-  onRawMonitorAutoExposureChange,
-  onRawMonitorLutEnabledChange,
-  onChooseMonitorLut,
-  onRemoveMonitorLut,
-  onRawMonitorLutStrengthChange,
   onDetectRawEngine,
   onChooseRawEngine,
   onClearRawEngine,
-  onGenerateRawMonitorCache,
-  onCancelRawMonitorCache,
   onRefreshRawMonitorCacheSize,
   onCleanupRawMonitorCache,
   onClearRawMonitorCache,
@@ -469,6 +469,62 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   const proFallbackSummary = proInferCapabilities?.epFallbackChain.find(item =>
     item.toLowerCase().includes('cuda') && !item.toLowerCase().includes('active'),
   ) ?? proInferCapabilities?.epFallbackChain.find(item => !item.toLowerCase().includes('active'));
+  const appCacheUsageLabel = appCacheUsageBusy
+    ? text.cacheCalculating
+    : appCacheUsage
+      ? formatPanelCacheSize(appCacheUsage.totalBytes)
+      : text.cacheUnknown;
+  const appCachePersistentLabel = appCacheUsage
+    ? formatPanelCacheSize(appCacheUsage.persistentBytes)
+    : text.cacheUnknown;
+  const appCacheDiskLabel = appCacheUsage
+    ? formatPanelCacheSize(appCacheUsage.diskBytes)
+    : text.cacheUnknown;
+  const cacheMaintenanceSection = (
+    <SettingsSection theme={theme} icon={DatabaseZap} title={text.cacheTitle} description={text.cacheDescription} separated>
+      <button
+        type="button"
+        onClick={onClearCaches}
+        title={text.cacheClearHint}
+        className={`flex w-full items-center justify-between rounded-lg border px-3 py-3 text-left transition-colors ${
+          theme === 'dark'
+            ? `${glassSubtle.dark} text-zinc-200 hover:bg-cyan-400/10`
+            : 'border-slate-400/30 bg-slate-100/[0.62] text-slate-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.82)] hover:border-cyan-400/40 hover:bg-cyan-100/56'
+        }`}
+      >
+        <span className="flex items-center gap-2 text-xs font-semibold">
+          <AppIcon icon={DatabaseZap} className={`h-4 w-4 ${theme === 'dark' ? 'text-cyan-200' : 'text-cyan-700'}`} />
+          {text.clearCaches}
+        </span>
+        <span className={`shrink-0 pl-3 text-[11px] font-semibold ${theme === 'dark' ? 'text-zinc-400' : 'text-slate-600'}`}>
+          {text.cacheUsage}: <span className={`font-mono ${theme === 'dark' ? 'text-zinc-100' : 'text-slate-900'}`}>{appCacheUsageLabel}</span>
+        </span>
+      </button>
+      <div className={`mt-2 flex items-center gap-3 text-[10.5px] ${
+        theme === 'dark' ? 'text-zinc-500' : 'text-slate-500'
+      }`}>
+        <span className="min-w-0 shrink-0 whitespace-nowrap" title={text.cachePersistentHint}>
+          {text.cachePersistent}: <span className={`font-mono font-semibold ${theme === 'dark' ? 'text-zinc-300' : 'text-slate-700'}`}>{appCachePersistentLabel}</span>
+        </span>
+        <span className="min-w-0 shrink-0 whitespace-nowrap" title={text.cacheDiskHint}>
+          {text.cacheDisk}: <span className={`font-mono font-semibold ${theme === 'dark' ? 'text-zinc-300' : 'text-slate-700'}`}>{appCacheDiskLabel}</span>
+        </span>
+        <button
+          type="button"
+          onClick={onRefreshAppCacheUsage || (() => undefined)}
+          disabled={appCacheUsageBusy}
+          title={text.cacheRefresh}
+          className={`ml-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors disabled:cursor-wait disabled:opacity-45 ${
+            theme === 'dark'
+              ? 'text-zinc-400 hover:bg-white/[0.06] hover:text-cyan-200'
+              : 'text-slate-500 hover:bg-white/70 hover:text-cyan-700'
+          }`}
+        >
+          <AppIcon icon={RefreshCw} className={`h-3.5 w-3.5 ${appCacheUsageBusy ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
+    </SettingsSection>
+  );
 
   const handleClose = () => {
     setView('settings');
@@ -650,28 +706,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               </div>
             </SettingsSection>
 
-            <SettingsSection theme={theme} icon={Film} title={t.settings.animation}>
-              <button
-                type="button"
-                onClick={() => onEnableAnimationChange(!enableAnimation)}
-                className={`flex w-full items-center justify-between rounded-lg border px-4 py-3 transition-all ${
-                  enableAnimation
-                    ? theme === 'dark'
-                      ? 'border-emerald-700/30 bg-emerald-900/20'
-                      : 'border-emerald-200 bg-emerald-50'
-                    : theme === 'dark'
-                      ? 'border-zinc-700/50 bg-zinc-800/40'
-                      : 'border-slate-300/60 bg-slate-100/[0.56]'
-                }`}
-              >
-                <span className={`text-sm font-semibold ${enableAnimation ? (theme === 'dark' ? 'text-emerald-300' : 'text-emerald-700') : (theme === 'dark' ? 'text-zinc-400' : 'text-gray-600')}`}>
-                  {t.settings.animationDescription}
-                </span>
-                <span className={`h-7 w-12 rounded-full p-1 transition-colors ${enableAnimation ? 'bg-cyan-500' : (theme === 'dark' ? 'bg-zinc-700' : 'bg-slate-300')}`}>
-                  <span className={`block h-5 w-5 rounded-full bg-white shadow transition-transform ${enableAnimation ? 'translate-x-5' : 'translate-x-0'}`} />
-                </span>
-              </button>
-            </SettingsSection>
+            {cacheMaintenanceSection}
 
             <SettingsSection theme={theme} icon={MonitorCog} title={text.lightroom} description={text.lightroomDescription} separated>
               <div className={`rounded-lg border p-3 ${
@@ -768,24 +803,13 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               theme={theme}
               language={language}
               settings={rawEngineSettings}
-              monitorSettings={rawMonitorSettings}
               busy={rawEngineBusy}
               progress={rawMonitorProgress}
-              rawCacheReady={rawCacheReady}
-              autoExposureCacheReady={autoExposureCacheReady}
               cacheSizeBytes={rawMonitorCacheSizeBytes}
               cacheBusy={rawMonitorCacheBusy}
-              onMonitorEnabledChange={onRawMonitorEnabledChange}
-              onAutoExposureChange={onRawMonitorAutoExposureChange}
-              onLutEnabledChange={onRawMonitorLutEnabledChange}
-              onChooseLut={onChooseMonitorLut}
-              onRemoveLut={onRemoveMonitorLut}
-              onLutStrengthChange={onRawMonitorLutStrengthChange}
               onDetect={onDetectRawEngine}
               onChoose={onChooseRawEngine}
               onClear={onClearRawEngine}
-              onGenerate={onGenerateRawMonitorCache}
-              onCancel={onCancelRawMonitorCache}
               onRefreshCacheSize={onRefreshRawMonitorCacheSize}
               onCleanupCache={onCleanupRawMonitorCache}
               onClearCache={onClearRawMonitorCache}
@@ -812,23 +836,6 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               </div>
             </SettingsSection>
 
-            <SettingsSection theme={theme} icon={DatabaseZap} title={text.cacheTitle} description={text.cacheDescription} separated>
-              <button
-                type="button"
-                onClick={onClearCaches}
-                className={`flex w-full items-center justify-between rounded-lg border px-3 py-3 text-left transition-colors ${
-                  theme === 'dark'
-                    ? `${glassSubtle.dark} text-zinc-200 hover:bg-cyan-400/10`
-                    : 'border-slate-400/30 bg-slate-100/[0.62] text-slate-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.82)] hover:border-cyan-400/40 hover:bg-cyan-100/56'
-                }`}
-              >
-                <span className="flex items-center gap-2 text-xs font-semibold">
-                  <AppIcon icon={DatabaseZap} className={`h-4 w-4 ${theme === 'dark' ? 'text-cyan-200' : 'text-cyan-700'}`} />
-                  {text.clearCaches}
-                </span>
-              </button>
-            </SettingsSection>
-
             <div className={`border-t pt-6 ${theme === 'dark' ? 'border-white/[0.06]' : 'border-slate-400/24'}`}>
               <ShortcutSettings theme={theme} language={language} />
             </div>
@@ -846,6 +853,13 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
     </>
   );
 };
+
+function formatPanelCacheSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
 
 const SettingsSection = ({
   theme,
@@ -948,21 +962,26 @@ const SmallSettingsButton = ({
   children,
   disabled,
   onClick,
+  className = '',
+  title,
 }: {
   theme: ResolvedTheme;
   children: React.ReactNode;
   disabled?: boolean;
   onClick: () => void;
+  className?: string;
+  title?: string;
 }) => (
   <button
     type="button"
     disabled={disabled}
     onClick={onClick}
-    className={`min-h-8 rounded-md px-2 text-[11px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+    title={title}
+    className={`min-h-8 whitespace-nowrap rounded-md px-2 text-[11px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
       theme === 'dark'
         ? 'bg-white/[0.06] text-zinc-200 hover:bg-white/[0.10]'
         : 'bg-white/70 text-slate-700 hover:bg-white'
-    }`}
+    } ${className}`}
   >
     {children}
   </button>

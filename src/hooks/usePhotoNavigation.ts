@@ -7,7 +7,6 @@ import { filterPhotos } from '../utils/photoFilters';
  */
 export function usePhotoNavigation(
   photos: PhotoGroup[],
-  _enableAnimation: boolean = true,
   duplicatePhotoIds?: ReadonlySet<string>,
   duplicateBestPhotoIds?: ReadonlySet<string>,
   aiPickedReady = true,
@@ -18,7 +17,6 @@ export function usePhotoNavigation(
   const [ratingFilter, setRatingFilterInternal] = useState<PhotoRatingFilter>('RATING_ALL');
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<string[]>([]);
   const [anchorPhotoId, setAnchorPhotoId] = useState<string | null>(null);
-  const animationClass = '';
   const [lastSelectedIds, setLastSelectedIds] = useState<Record<PhotoFilter, string | null>>({
     ALL: null,
     PICKED: null,
@@ -277,7 +275,6 @@ export function usePhotoNavigation(
     setFilter,
     ratingFilter,
     setRatingFilter,
-    animationClass,
     filteredPhotos,
     currentPhoto,
     selectedPhotoIds,

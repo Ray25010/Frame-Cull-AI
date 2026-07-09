@@ -44,7 +44,6 @@ import {
 
 interface ViewerProps {
   group: PhotoGroup;
-  animationClass: string;
   onUpdateSelection?: (state: SelectionState) => void;
   onAiReview?: (state: SelectionState) => void;
   onUpdateRating?: (rating: PhotoRating) => void;
@@ -448,7 +447,6 @@ const copy = {
 
 const Viewer: React.FC<ViewerProps> = ({
   group,
-  animationClass,
   onUpdateSelection,
   onAiReview,
   onUpdateRating,
@@ -712,7 +710,7 @@ const Viewer: React.FC<ViewerProps> = ({
   };
 
   return (
-    <div className={`flex h-full min-h-0 flex-1 flex-col overflow-hidden md:flex-row ${animationClass}`}>
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
       <div
         ref={containerRef}
         className={`relative flex flex-1 cursor-crosshair items-center justify-center overflow-hidden p-3 ${

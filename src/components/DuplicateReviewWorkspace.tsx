@@ -225,7 +225,6 @@ export const DuplicateReviewWorkspace: React.FC<DuplicateReviewWorkspaceProps> =
         )}
         <Viewer
           group={focusedPhoto}
-          animationClass=""
           onUpdateSelection={state => onUpdateSelection(focusedPhoto.id, state)}
           theme={theme}
           language={language}

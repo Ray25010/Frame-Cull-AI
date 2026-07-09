@@ -608,7 +608,6 @@ export const PeopleSplitWorkspace: React.FC<PeopleSplitWorkspaceProps> = ({
               </button>
               <Viewer
                 group={focusedPhoto}
-                animationClass=""
                 onUpdateSelection={(nextState) => onUpdatePhotoSelection(focusedPhoto.id, nextState)}
                 onUpdateRating={(rating) => { void onUpdatePhotoRating(focusedPhoto.id, rating); }}
                 theme={theme}

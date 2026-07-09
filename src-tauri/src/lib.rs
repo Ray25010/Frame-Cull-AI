@@ -112,6 +112,15 @@ pub struct CachedJpegThumbnail {
     pub height: u32,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppCacheUsage {
+    pub disk_bytes: u64,
+    pub raw_preview_bytes: u64,
+    pub jpeg_thumbnail_bytes: u64,
+    pub raw_monitor_bytes: u64,
+}
+
 #[cfg(feature = "pro")]
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -1627,6 +1636,62 @@ fn jpeg_thumbnail_cache_path(
         .join("jpg-thumbnails");
 
     Ok(cache_root.join(file_name))
+}
+
+fn app_preview_cache_dir(app: &tauri::AppHandle, name: &str) -> Result<PathBuf, String> {
+    Ok(app
+        .path()
+        .app_cache_dir()
+        .map_err(|e| format!("Failed to resolve cache directory: {}", e))?
+        .join(name))
+}
+
+#[tauri::command]
+fn get_app_cache_usage(app: tauri::AppHandle) -> Result<AppCacheUsage, String> {
+    let raw_preview_bytes = directory_size_if_exists(&app_preview_cache_dir(&app, "raw-previews")?)
+        .map_err(|e| format!("Failed to calculate RAW preview cache size: {}", e))?;
+    let jpeg_thumbnail_bytes = directory_size_if_exists(&app_preview_cache_dir(&app, "jpg-thumbnails")?)
+        .map_err(|e| format!("Failed to calculate JPEG thumbnail cache size: {}", e))?;
+    let raw_monitor_bytes = directory_size_if_exists(&app_preview_cache_dir(&app, "raw-monitor-previews")?)
+        .map_err(|e| format!("Failed to calculate RAW monitor cache size: {}", e))?;
+
+    Ok(AppCacheUsage {
+        disk_bytes: raw_preview_bytes + jpeg_thumbnail_bytes + raw_monitor_bytes,
+        raw_preview_bytes,
+        jpeg_thumbnail_bytes,
+        raw_monitor_bytes,
+    })
+}
+
+#[tauri::command]
+fn clear_app_preview_caches(app: tauri::AppHandle) -> Result<u64, String> {
+    let cache_dirs = [
+        "raw-previews",
+        "jpg-thumbnails",
+        "raw-monitor-previews",
+    ];
+    let mut cleared_bytes = 0u64;
+
+    for dir_name in cache_dirs {
+        let cache_dir = app_preview_cache_dir(&app, dir_name)?;
+        if !cache_dir.exists() {
+            continue;
+        }
+        cleared_bytes += calculate_directory_size(&cache_dir)
+            .map_err(|e| format!("Failed to calculate cache size for {}: {}", dir_name, e))?;
+        fs::remove_dir_all(&cache_dir)
+            .map_err(|e| format!("Failed to clear cache directory {}: {}", dir_name, e))?;
+    }
+
+    Ok(cleared_bytes)
+}
+
+fn directory_size_if_exists(path: &Path) -> std::io::Result<u64> {
+    if path.exists() {
+        calculate_directory_size(path)
+    } else {
+        Ok(0)
+    }
 }
 
 #[cfg(feature = "pro")]
@@ -4516,7 +4581,6 @@ fn cleanup_raw_monitor_cache_lru(app: tauri::AppHandle) -> Result<u64, String> {
     Ok(deleted_size)
 }
 
-#[cfg(feature = "pro")]
 fn calculate_directory_size(path: &Path) -> std::io::Result<u64> {
     let mut total_size = 0u64;
 
@@ -5999,6 +6063,8 @@ pub fn run() {
         import_files_stream,
         extract_raw_embedded_preview,
         get_jpeg_thumbnail,
+        get_app_cache_usage,
+        clear_app_preview_caches,
         detect_rawtherapee_cli,
         validate_raw_engine,
         get_raw_monitor_cache_entry,
@@ -6038,6 +6104,8 @@ pub fn run() {
         import_files_stream,
         extract_raw_embedded_preview,
         get_jpeg_thumbnail,
+        get_app_cache_usage,
+        clear_app_preview_caches,
         move_to_trash,
         delete_files_permanently,
         export_files,

@@ -95,8 +95,6 @@ export const translations = {
       chinese: '中文',
       english: 'English',
       close: '关闭',
-      animation: '切换动画',
-      animationDescription: '显示滑动切换动画效果',
       shortcuts: {
         title: '快捷键',
         resetToDefault: '恢复默认',
@@ -353,8 +351,6 @@ export const translations = {
       chinese: '中文',
       english: 'English',
       close: 'Close',
-      animation: 'Transition Animation',
-      animationDescription: 'Show slide animation effects',
       shortcuts: {
         title: 'Keyboard Shortcuts',
         resetToDefault: 'Reset to Default',
