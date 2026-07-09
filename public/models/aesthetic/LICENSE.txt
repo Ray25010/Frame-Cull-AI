@@ -1,0 +1,19 @@
+FrameCull AI aesthetic scoring model slot
+
+Expected model file:
+  public/models/aesthetic/nima_mobilenet.onnx
+
+The application can run without this file. If the ONNX model is absent or fails
+to load, AI scoring falls back to local technical and visual heuristics and
+records the aesthetic status as UNAVAILABLE or ERROR.
+
+Bundled local test model:
+  File: public/models/aesthetic/nima_mobilenet.onnx
+  Source: https://huggingface.co/cromsc/nima-mobilenet-aesthetic/resolve/main/nima_mobilenet_aesthetic.onnx
+  SHA256: C58B0C39B5B8F752B1B0EBF10E07E48406780CE3BF9D4647F8C43898748FE69C
+
+Distribution note:
+  The upstream Hugging Face repository did not expose a clear model card or
+  license at download time. Before public commercial distribution, replace this
+  file with a self-trained/converted model or another NIMA-compatible ONNX model
+  whose license, training data notes, and redistribution terms are explicit.

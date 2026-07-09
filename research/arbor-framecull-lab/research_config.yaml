@@ -1,0 +1,57 @@
+task: >
+  Organize FrameCull Pro / AI research into an Arbor-style durable workspace
+  without changing product source code. Track goals, metrics, datasets,
+  evidence artifacts, Idea Tree state, and paper-facing reports for teacher,
+  student, pick-ranker, false-face, and package/performance experiments.
+
+coordinator:
+  max_cycles: 1
+  ui:
+    interaction_mode: review
+
+run:
+  mode: smoke_setup
+  session_name: workspace-reorg-20260626
+  trunk_branch: arbor/trunk/framecull-pro-research
+
+metric:
+  direction: mixed
+  primary:
+    - name: low_ratio_recall
+      direction: maximize
+    - name: false_face_risk_delta
+      direction: minimize
+    - name: negative_pick_rate
+      direction: minimize
+    - name: duplicate_pollution
+      direction: minimize
+    - name: latency_ms_per_image
+      direction: minimize
+
+protected_paths:
+  - src/**
+  - src-tauri/src/**
+  - src-tauri/tauri*.conf.json
+  - package.json
+  - pnpm-lock.yaml
+  - README.md
+  - docs/README_CN.md
+
+allowed_edit_surface:
+  - research/arbor-framecull-lab/**
+
+evidence_roots:
+  - output/paper-artifacts/semantic-teacher-lab
+  - output/semantic-false-face-diagnosis
+  - output/pro-models
+  - output/ai-bench
+  - docs
+
+expensive_actions_require_approval:
+  - training
+  - gpu_jobs
+  - full_inference
+  - package_install
+  - downloads
+  - product_source_edits
+  - merge_attempts

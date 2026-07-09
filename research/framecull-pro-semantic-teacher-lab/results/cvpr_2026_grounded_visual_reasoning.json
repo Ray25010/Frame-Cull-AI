@@ -1,0 +1,46 @@
+{
+  "overview": "CVPR 2026 grounded and reasoning-oriented vision-language work is useful to FrameCull as methodology, not as a direct product dependency. The reusable idea is to require visual evidence before scoring: regions, observations, and links from evidence to keep/reject decisions.",
+  "evidence": [
+    {
+      "name": "Mirage: Machine Mental Imagery for Multimodal Reasoning",
+      "source": "https://openaccess.thecvf.com/content/CVPR2026/html/Dai_Mirage_Machine_Mental_Imagery_for_Multimodal_Reasoning_CVPR_2026_paper.html",
+      "use": "Supports the idea that multimodal reasoning can benefit from internal visual representations instead of only text explanations."
+    },
+    {
+      "name": "G2VLM: Geometry Grounded Vision-Language Model with Unified 3D Reconstruction",
+      "source": "https://openaccess.thecvf.com/content/CVPR2026/html/Hu_G2VLM_Geometry_Grounded_Vision_Language_Model_with_Unified_3D_Reconstruction_CVPR_2026_paper.html",
+      "use": "Supports grounding visual-language reasoning in spatial or geometric evidence."
+    },
+    {
+      "name": "DeepScan: A Training-Free Framework for Visually Grounded Reasoning in Large Vision-Language Models",
+      "source": "https://openaccess.thecvf.com/content/CVPR2026/html/Li_DeepScan_A_Training-Free_Framework_for_Visually_Grounded_Reasoning_in_Large_CVPR_2026_paper.html",
+      "use": "Supports evidence-first scanning before final reasoning."
+    },
+    {
+      "name": "Grounded Chain-of-Thought for Multimodal Large Language Models",
+      "source": "https://openaccess.thecvf.com/content/CVPR2026/html/Jiang_Grounded_Chain-of-Thought_for_Multimodal_Large_Language_Models_CVPR_2026_paper.html",
+      "use": "Supports explicit grounding during reasoning steps."
+    }
+  ],
+  "applicability": "FrameCull should not attempt to ship these large research models. It should use their method-level lesson: a semantic teacher must produce grounded records with region-level evidence and a flat-scalar ablation must prove whether grounding adds measurable value.",
+  "implementation_tasks": [
+    "Keep reasoningTrace mandatory in grounded teacher mode.",
+    "Keep faceRegionVerdicts mandatory for suspicious face-like regions.",
+    "Normalize all region boxes to 0..1 and validate them before training.",
+    "Run a matched flat-scalar ablation using the same images and teacher model.",
+    "Write grounded-vs-flat-ablation.md before any product recommendation."
+  ],
+  "validation": [
+    "Teacher JSONL passes schema validation.",
+    "Grounded records have non-empty reasoningTrace coverage.",
+    "False-face samples include region evidence rather than only scalar risk.",
+    "Grounded student beats flat-scalar student on low-ratio recall or false-face reduction."
+  ],
+  "risks": [
+    "Research papers may not be directly reproducible in the local product pipeline.",
+    "Teacher reasoning text can look plausible while visual evidence is wrong.",
+    "A student model may not learn the grounded structure from scalar supervision alone."
+  ],
+  "go_no_go": "Keep the grounded semantic path only if it outperforms flat-scalar at 38%, 45%, or 50% recall, or reduces false-face errors, without increasing hard issue picks or duplicate pollution.",
+  "uncertain": []
+}

@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FrameCull AI Culling Benchmark</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #101115;
+        color: #e4e4e7;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        padding: 32px;
+        background:
+          radial-gradient(circle at 40% 0%, rgba(34, 211, 238, 0.10), transparent 38%),
+          #101115;
+      }
+
+      main {
+        max-width: 920px;
+        margin: 0 auto;
+      }
+
+      .panel {
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 16px;
+        background: rgba(27, 29, 33, 0.86);
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.24);
+        padding: 20px;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 20px;
+      }
+
+      p {
+        color: #a1a1aa;
+        line-height: 1.6;
+      }
+
+      input,
+      button {
+        font: inherit;
+      }
+
+      button {
+        border: 0;
+        border-radius: 10px;
+        background: rgba(103, 232, 249, 0.14);
+        color: #cffafe;
+        padding: 9px 14px;
+        cursor: pointer;
+      }
+
+      pre {
+        overflow: auto;
+        max-height: 55vh;
+        border-radius: 12px;
+        background: rgba(0, 0, 0, 0.24);
+        padding: 14px;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="panel">
+      <h1>FrameCull AI Culling Benchmark</h1>
+      <p>
+        Local lab page for measuring real browser worker throughput with the same FrameCull AI analyzer worker and local model assets.
+      </p>
+      <input id="files" type="file" multiple accept="image/jpeg,image/png,.jpg,.jpeg,.png" />
+      <button id="run">Run benchmark</button>
+      <pre id="output">Waiting for files...</pre>
+    </main>
+    <script type="module" src="./bench-ai-culling.ts"></script>
+  </body>
+</html>

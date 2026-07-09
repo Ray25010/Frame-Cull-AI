@@ -1,0 +1,26 @@
+fields:
+  overview:
+    description: What this item contributes to FrameCull Pro Semantic Teacher Lab.
+    detail_level: moderate
+  evidence:
+    description: Primary papers, docs, repositories, or local project specs supporting the item.
+    detail_level: detailed
+  applicability:
+    description: How the item can be used in FrameCull without overextending beyond evidence.
+    detail_level: detailed
+  implementation_tasks:
+    description: Concrete tasks or code paths needed to realize the item.
+    detail_level: detailed
+  validation:
+    description: Metrics, artifacts, or checks that decide whether the item passes.
+    detail_level: detailed
+  risks:
+    description: Technical, licensing, data leakage, performance, or product risks.
+    detail_level: moderate
+  go_no_go:
+    description: Decision threshold for keeping, changing, or dropping this item.
+    detail_level: moderate
+uncertain:
+  - exact CVPR 2026 final paper list may change before proceedings are fully stable
+  - InternVL candidate license and memory footprint require live verification before official teacher use
+  - final Pro Student V2 performance depends on real full-run teacher labels and 6GB hardware validation

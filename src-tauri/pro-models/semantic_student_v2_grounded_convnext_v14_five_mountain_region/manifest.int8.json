@@ -1,0 +1,177 @@
+{
+  "schemaVersion": 1,
+  "backboneVersion": "framecull-pro-semantic-v2-grounded-convnext-v14-five-mountain-region-int8-linear",
+  "model": "model.int8.onnx",
+  "sha256": "1bde98ea9c21b163558e6379b2a755ba8429b182a19dc59d93ba5ea768b8b504",
+  "inputName": "pixel_values",
+  "inputResolution": 384,
+  "channels": 3,
+  "normalize": {
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ]
+  },
+  "heads": [
+    {
+      "name": "aesthetic",
+      "output": "aesthetic",
+      "kind": "scalar01"
+    },
+    {
+      "name": "scene",
+      "output": "scene_logits",
+      "kind": "classifier",
+      "labels": [
+        "animal",
+        "documentary_moment",
+        "empty_scene",
+        "environmental_portrait",
+        "event",
+        "food",
+        "group",
+        "landscape",
+        "other",
+        "portrait",
+        "product_object"
+      ]
+    },
+    {
+      "name": "persona",
+      "output": "persona",
+      "kind": "scalar01"
+    },
+    {
+      "name": "semantic_keep",
+      "output": "semantic_keep",
+      "kind": "scalar01"
+    },
+    {
+      "name": "face_validity",
+      "output": "face_validity",
+      "kind": "scalar01"
+    },
+    {
+      "name": "composition",
+      "output": "composition",
+      "kind": "scalar01"
+    },
+    {
+      "name": "moment",
+      "output": "moment",
+      "kind": "scalar01"
+    },
+    {
+      "name": "lighting",
+      "output": "lighting",
+      "kind": "scalar01"
+    },
+    {
+      "name": "false_face_risk",
+      "output": "false_face_risk",
+      "kind": "scalar01"
+    }
+  ],
+  "labNotes": {
+    "semanticSchema": "framecull-semantic-teacher-v1",
+    "studentSchema": "framecull-pro-semantic-student-v2",
+    "teacherFlatScalar": false,
+    "studentCheckpoint": "/data/FrameCullModelLab/outputs/semantic-student/grounded-convnext-v14-five-mountain-region/student-best.pt",
+    "scalarHeads": [
+      "semanticKeepScore",
+      "faceValidityScore",
+      "falseFaceRisk",
+      "compositionScore",
+      "momentScore",
+      "lightingMoodScore"
+    ],
+    "faceHeadSupervision": "faceValidityScore and independent falseFaceRisk heads with asymmetric hard-negative emphasis and high-risk scene oversampling",
+    "hasIndependentFalseFaceRiskHead": true,
+    "derivedOutputs": {},
+    "dinoDim": 768,
+    "clipDim": 512,
+    "metrics": {
+      "sceneAccuracy": 0.8531390428543091,
+      "clipCosMean": 0.9182356595993042,
+      "dinoCosMean": 0.8495274186134338,
+      "aestheticCorr": {
+        "srcc": 0.9437538366979613,
+        "plcc": 0.941941499710083
+      },
+      "semanticKeepScoreCorr": {
+        "srcc": 0.8048753649670064,
+        "plcc": 0.834986686706543
+      },
+      "faceValidityScoreCorr": {
+        "srcc": 0.8774391815700302,
+        "plcc": 0.9113354682922363
+      },
+      "falseFaceRiskCorr": {
+        "srcc": 0.7629302501146534,
+        "plcc": 0.6803898215293884
+      },
+      "compositionScoreCorr": {
+        "srcc": 0.7259436073427525,
+        "plcc": 0.7443082332611084
+      },
+      "momentScoreCorr": {
+        "srcc": 0.7005775740922389,
+        "plcc": 0.7016218900680542
+      },
+      "lightingMoodScoreCorr": {
+        "srcc": 0.7284193810490783,
+        "plcc": 0.7144650220870972
+      }
+    },
+    "qaOnlyFieldsNotExported": [
+      "storytellingScore",
+      "emptyOrFillerScore",
+      "technicalVisibleIssueScore",
+      "scenicValueScore"
+    ],
+    "quantization": {
+      "strategy": "dynamic-matmul-gemm",
+      "errors": []
+    },
+    "personaHead": {
+      "schema": "framecull-pro-persona-head-v2",
+      "studentSchema": "framecull-pro-semantic-student-v2",
+      "studentType": "semantic-student-v2",
+      "ratingSrcc": 0.39020828756080644,
+      "valMetrics": {
+        "auc": 0.7528432904876323,
+        "ap": 0.5633225668322066,
+        "mean_pos_score": 0.6618244051933289,
+        "mean_neg_score": 0.482837051153183
+      },
+      "allMetrics": {
+        "auc": 0.7757031057392646,
+        "ap": 0.5997640160505309,
+        "mean_pos_score": 0.6715916991233826,
+        "mean_neg_score": 0.4783063232898712
+      },
+      "labelPolicy": {
+        "camera": {
+          "positive_threshold": 1,
+          "description": "rating>=1 positive; rating==0 or missing negative"
+        },
+        "five_mountain": {
+          "positive_threshold": 1,
+          "description": "rating>=1 positive; rating==0 or missing negative"
+        },
+        "audit3groups": {
+          "positive_threshold": 3,
+          "description": "rating>=3 positive; rating<3 or missing negative"
+        }
+      },
+      "checkpoint": "/data/FrameCullModelLab/outputs/semantic-student/grounded-convnext-v14-five-mountain-region-persona/persona-head.pt",
+      "hidden": 256
+    }
+  }
+}

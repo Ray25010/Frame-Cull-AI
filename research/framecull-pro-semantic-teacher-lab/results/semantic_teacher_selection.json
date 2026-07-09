@@ -1,0 +1,43 @@
+{
+  "overview": "The first official semantic teacher should be Qwen2.5-VL-7B-Instruct because it is open, locally runnable on the 5090 server, supports strong visual understanding and structured output, and has a clearer commercial path than many research-only alternatives.",
+  "evidence": [
+    {
+      "name": "Qwen2.5-VL Technical Report",
+      "source": "https://arxiv.org/abs/2502.13923",
+      "use": "Primary technical reference for the chosen VLM teacher family."
+    },
+    {
+      "name": "Qwen2.5-VL-7B-Instruct model page",
+      "source": "https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct",
+      "use": "Model distribution and license check source."
+    },
+    {
+      "name": "InternVL3 Technical Report",
+      "source": "https://arxiv.org/abs/2504.10479",
+      "use": "Comparison teacher candidate for robustness and cross-teacher agreement."
+    }
+  ],
+  "applicability": "Use Qwen2.5-VL as the cleared primary teacher if license clearance passes. Use InternVL3 only as a comparison or agreement-check teacher until memory footprint and license status are confirmed.",
+  "implementation_tasks": [
+    "Run teacher_license_clearance.py before any full annotation.",
+    "Store Hugging Face cache and model files under /data/FrameCullModelLab.",
+    "Use local model directories for reproducibility after model download.",
+    "Record teacherModel, teacherVersion, model path, and license state in every report.",
+    "Do not let model-generated metadata override runner-owned provenance."
+  ],
+  "validation": [
+    "teacher-license-clearance.md marks at least one teacher as cleared.",
+    "Qwen local model loads and produces schema-valid JSONL on smoke samples.",
+    "Failure CSV is written and resume works.",
+    "Flat-scalar mode also runs with the same teacher and image list."
+  ],
+  "risks": [
+    "Large VLM outputs may hallucinate unsupported evidence.",
+    "JSON formatting can fail under long prompts.",
+    "InternVL variants may have license or VRAM limits that block official use."
+  ],
+  "go_no_go": "Proceed to full annotation only after license clearance, local load success, grounded smoke success, flat-scalar smoke success, and QA report pass.",
+  "uncertain": [
+    "InternVL exact variant and license suitability require live confirmation before official labels."
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "overview": "The final decision must be metric-driven. The semantic model is useful only if it improves real culling outcomes under the existing hard-fault, duplicate, and rejected-photo constraints.",
+  "evidence": [
+    {
+      "name": "Supervised AI pick tuner",
+      "source": "tools/ai-lab/tune-ai-picks-supervised.mjs",
+      "use": "Existing evaluation structure for ratio-aware AI pick metrics."
+    },
+    {
+      "name": "Pro semantic bench",
+      "source": "tools/ai-lab/bench-pro-semantic-student.mjs",
+      "use": "Evaluation output path for semantic student experiments."
+    },
+    {
+      "name": "Goal document",
+      "source": "docs/GOAL_pro_semantic_teacher_lab.md",
+      "use": "Defines required reports and product gates."
+    }
+  ],
+  "applicability": "Evaluate current rules, ratio-aware rules, Pro persona v1, semantic-only, fused semantic, face-guard, and flat-scalar at 38%, 45%, 50%, and 60%. Report per dataset and per scene rather than hiding failures in an average.",
+  "implementation_tasks": [
+    "Run matched grounded and flat-scalar teacher/student arms.",
+    "Generate metrics-by-ratio.csv and metrics-by-scene.csv.",
+    "Generate false-negatives-by-ratio.csv, duplicate-pollution-by-ratio.csv, and false-face-samples.csv.",
+    "Generate pro-infer-latency.csv.",
+    "Write production-recommendation.md with go/no-go and exact next action."
+  ],
+  "validation": [
+    "G-drive/audit3groups uses rating>=3.",
+    "Camera/other datasets use rating>=1.",
+    "Hard issue picked count is zero.",
+    "Duplicate non-representatives are not rescued by semantic score.",
+    "Grounded-vs-flat ablation is present and uses matched inputs."
+  ],
+  "risks": [
+    "Averaging datasets with different label meanings can create false improvements.",
+    "Semantic scores can improve recall by simply admitting too many weak positives.",
+    "Speed may be unacceptable on DirectML or CPU fallback even if accuracy improves."
+  ],
+  "go_no_go": "Enter Pro gated ranking only if any low ratio improves by at least 5% recall or 4/5-star coverage improves by at least 8%, negative mixing worsens by no more than 2%, duplicate pollution does not worsen, hard issue picked remains zero, and latency is acceptable.",
+  "uncertain": []
+}

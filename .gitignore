@@ -1,0 +1,43 @@
+# Logs
+logs
+*.log
+*.pid
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Local temp workspaces
+.tmp-*/
+tmp-*/
+
+node_modules
+dist
+dist-ssr
+output
+*.local
+__pycache__/
+*.py[cod]
+src-tauri/target/
+tools/pro-raw-preview-lab/target/
+src-tauri/vendor/nvidia-cuda/
+src-tauri/vendor/rawtherapee/downloads/
+src-tauri/vendor/rawtherapee/windows-x64/
+
+# Editor directories and files
+.vscode/*
+.qoder
+.claude
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Agents files
+AGENTS.md
+CLAUDE.md

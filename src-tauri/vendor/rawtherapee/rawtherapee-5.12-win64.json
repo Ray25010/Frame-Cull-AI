@@ -1,0 +1,12 @@
+{
+  "name": "RawTherapee",
+  "version": "5.12",
+  "platform": "windows-x64",
+  "artifact": "RawTherapee_5.12_win64_release.zip",
+  "sourceUrl": "https://github.com/RawTherapee/RawTherapee/releases/download/5.12/RawTherapee_5.12_win64_release.zip",
+  "releaseUrl": "https://github.com/RawTherapee/RawTherapee/releases/tag/5.12",
+  "sha256": "a6de1797da462975435846db7b79a981557350af1bdac07525bf6884ede805dd",
+  "license": "GPL-3.0",
+  "cliRelativePath": "windows-x64/RawTherapee_5.12_win64_release/rawtherapee-cli.exe",
+  "resourceRelativePath": "raw-engines/rawtherapee/windows-x64/RawTherapee_5.12_win64_release/rawtherapee-cli.exe"
+}

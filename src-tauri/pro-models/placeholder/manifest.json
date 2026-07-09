@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "backboneVersion": "placeholder-v0",
+  "model": "model.onnx",
+  "sha256": "9422da95e3e6296759c16378fd3aac5003c265fb6095c9ae69173014bccf4298",
+  "inputName": "pixel_values",
+  "inputResolution": 384,
+  "channels": 3,
+  "normalize": {
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ]
+  },
+  "heads": [
+    {
+      "name": "aesthetic",
+      "output": "aesthetic",
+      "kind": "scalar01"
+    },
+    {
+      "name": "scene",
+      "output": "scene_logits",
+      "kind": "classifier",
+      "labels": [
+        "outdoor_portrait",
+        "indoor_portrait",
+        "scenery",
+        "other"
+      ]
+    },
+    {
+      "name": "persona",
+      "output": "persona",
+      "kind": "scalar01"
+    }
+  ]
+}
