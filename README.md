@@ -5,7 +5,7 @@
 
   <p>
     <strong>本地 AI 筛片、图库整理工作台</strong><br />
-    <strong>Local AI photo culling, library cleanup, and Pro distilled-model workflow</strong>
+    <strong>Local AI photo culling, library cleanup workflow</strong>
   </p>
 
   <p>
