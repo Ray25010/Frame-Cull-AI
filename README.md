@@ -4,7 +4,7 @@
   <h1>FrameCull AI</h1>
 
   <p>
-    <strong>本地 AI 筛片、图库整理与 Pro 蒸馏模型工作台</strong><br />
+    <strong>本地 AI 筛片、图库整理工作台</strong><br />
     <strong>Local AI photo culling, library cleanup, and Pro distilled-model workflow</strong>
   </p>
 
