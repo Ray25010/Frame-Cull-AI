@@ -67,6 +67,7 @@ export const RawEngineSection = ({
   const autoExposureEnabled = Boolean(monitorSettings?.autoExposureEnabled && autoExposureCacheReady);
   const lutEnabled = Boolean(monitorSettings?.lutEnabled);
   const lutStrength = monitorSettings?.lutStrength ?? 1;
+  const hasLut = Boolean(monitorSettings?.lutPath);
   const sourceLabel = sourceCopy(language, settings?.engineSource);
   const cacheSizeLabel = cacheSizeBytes == null ? text.cacheUnknown : formatCacheSize(cacheSizeBytes);
   const hasCache = (cacheSizeBytes ?? 0) > 0;
@@ -111,16 +112,16 @@ export const RawEngineSection = ({
           title={text.lut}
           detail={monitorSettings?.lutName || text.lutHint}
           onClick={() => {
-            if (!lutEnabled && !monitorSettings?.lutPath) onChooseLut?.();
+            if (!lutEnabled && !hasLut) onChooseLut?.();
             else onLutEnabledChange?.(!lutEnabled);
           }}
         />
 
         <div className="mt-3 grid grid-cols-2 gap-2">
           <SmallSettingsButton theme={theme} onClick={onChooseLut || (() => undefined)}>
-            {monitorSettings?.lutPath ? text.changeLut : text.chooseLut}
+            {hasLut ? text.changeLut : text.chooseLut}
           </SmallSettingsButton>
-          <SmallSettingsButton theme={theme} onClick={onRemoveLut || (() => undefined)} disabled={!monitorSettings?.lutPath}>
+          <SmallSettingsButton theme={theme} onClick={onRemoveLut || (() => undefined)} disabled={!hasLut}>
             {text.removeLut}
           </SmallSettingsButton>
         </div>
@@ -136,7 +137,7 @@ export const RawEngineSection = ({
           onChange={event => onLutStrengthChange?.(Number(event.currentTarget.value))}
           className={`export-quality-slider mt-1 w-full ${theme}`}
           style={{ '--quality': `${Math.round(lutStrength * 100)}%` } as React.CSSProperties}
-          disabled={!monitorSettings?.lutPath}
+          disabled={!hasLut}
         />
 
         <div className={`mt-4 text-xs font-semibold ${ok ? (theme === 'dark' ? 'text-emerald-300' : 'text-emerald-700') : (theme === 'dark' ? 'text-zinc-400' : 'text-slate-600')}`}>

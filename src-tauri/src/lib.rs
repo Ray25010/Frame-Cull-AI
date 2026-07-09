@@ -428,7 +428,7 @@ const MIN_EMBEDDED_JPEG_BYTES: usize = 16 * 1024;
 const RAW_PREVIEW_CACHE_VERSION: &str = "v2";
 const JPEG_THUMBNAIL_CACHE_VERSION: &str = "v1";
 #[cfg(feature = "pro")]
-const RAW_MONITOR_CACHE_VERSION: &str = "v3";
+const RAW_MONITOR_CACHE_VERSION: &str = "v5";
 #[cfg(feature = "pro")]
 const RAW_MONITOR_PROFILE_BALANCED: &str = "FrameCull_Monitor_Balanced_v1";
 #[cfg(feature = "pro")]
@@ -439,6 +439,8 @@ const RAW_MONITOR_MAX_EDGE: u32 = 2400;
 const RAW_MONITOR_JPEG_QUALITY: u8 = 85;
 #[cfg(feature = "pro")]
 const RAW_MONITOR_MAX_PARALLELISM: usize = 3;
+#[cfg(feature = "pro")]
+const RAW_MONITOR_MAX_LUT_BYTES: u64 = 16 * 1024 * 1024;
 #[cfg(feature = "pro")]
 const RAW_MONITOR_FAILURE_RETRY_COOLDOWN_SECS: u64 = 30 * 60;
 #[cfg(feature = "pro")]
@@ -1685,6 +1687,98 @@ fn raw_monitor_cache_root(app: &tauri::AppHandle) -> Result<PathBuf, String> {
         .app_cache_dir()
         .map_err(|e| format!("Failed to resolve cache directory: {}", e))?
         .join("raw-monitor-previews"))
+}
+
+#[cfg(feature = "pro")]
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MonitorLutFile {
+    path: String,
+    name: String,
+    content: String,
+}
+
+#[cfg(feature = "pro")]
+fn monitor_lut_root(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let root = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to resolve app data directory: {}", e))?
+        .join("monitor-luts");
+    fs::create_dir_all(&root)
+        .map_err(|e| format!("Failed to create LUT import directory: {}", e))?;
+    Ok(root)
+}
+
+#[cfg(feature = "pro")]
+fn read_monitor_lut_file(path: &Path) -> Result<(String, String), String> {
+    let extension = path
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default();
+    if !extension.eq_ignore_ascii_case("cube") {
+        return Err("Only .cube LUT files are supported".to_string());
+    }
+
+    let metadata =
+        fs::metadata(path).map_err(|e| format!("Failed to inspect LUT file: {}", e))?;
+    if !metadata.is_file() {
+        return Err("Selected LUT path is not a file".to_string());
+    }
+    if metadata.len() > RAW_MONITOR_MAX_LUT_BYTES {
+        return Err(format!(
+            "LUT file is too large. Maximum supported size is {} MB.",
+            RAW_MONITOR_MAX_LUT_BYTES / 1024 / 1024
+        ));
+    }
+
+    let content =
+        fs::read_to_string(path).map_err(|e| format!("Failed to read LUT file: {}", e))?;
+    if content.trim().is_empty() {
+        return Err("LUT file is empty".to_string());
+    }
+
+    Ok((readable_file_name(path), content))
+}
+
+#[cfg(feature = "pro")]
+#[tauri::command]
+fn import_monitor_lut(
+    app: tauri::AppHandle,
+    source_path: String,
+) -> Result<MonitorLutFile, String> {
+    let source_path = PathBuf::from(source_path);
+    let (name, content) = read_monitor_lut_file(&source_path)?;
+    let root = monitor_lut_root(&app)?;
+
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    source_path.hash(&mut hasher);
+    content.hash(&mut hasher);
+    let mut safe_name = sanitize_path_segment(&name);
+    if !safe_name.to_ascii_lowercase().ends_with(".cube") {
+        safe_name.push_str(".cube");
+    }
+    let imported_path = root.join(format!("{:016x}-{}", hasher.finish(), safe_name));
+    fs::write(&imported_path, content.as_bytes())
+        .map_err(|e| format!("Failed to import LUT file: {}", e))?;
+
+    Ok(MonitorLutFile {
+        path: imported_path.to_string_lossy().to_string(),
+        name,
+        content,
+    })
+}
+
+#[cfg(feature = "pro")]
+#[tauri::command]
+fn read_monitor_lut(path: String) -> Result<MonitorLutFile, String> {
+    let path = PathBuf::from(path);
+    let (name, content) = read_monitor_lut_file(&path)?;
+    Ok(MonitorLutFile {
+        path: path.to_string_lossy().to_string(),
+        name,
+        content,
+    })
 }
 
 #[cfg(feature = "pro")]
@@ -3753,6 +3847,11 @@ fn render_raw_monitor_cache_file(
 
     if rawtherapee_reported_decode_failure(&stderr) {
         let _ = fs::remove_file(cache_path);
+        let detail = if stderr.is_empty() {
+            "RawTherapee reported a RAW decode failure".to_string()
+        } else {
+            stderr
+        };
         return write_raw_monitor_embedded_preview_cache(raw_path, cache_path, profile_id).map(
             |status| RawMonitorRenderResult {
                 cache_path: cache_path.to_path_buf(),
@@ -3761,8 +3860,8 @@ fn render_raw_monitor_cache_file(
         ).map_err(
             |fallback_error| {
                 format!(
-                    "RawTherapee reported a RAW decode failure; embedded preview fallback also failed: {}; {}",
-                    fallback_error, stderr
+                    "{}; embedded preview fallback also failed: {}",
+                    detail, fallback_error
                 )
             },
         );
@@ -3859,13 +3958,13 @@ fn validate_raw_monitor_cache_jpeg(cache_path: &Path) -> Result<(), String> {
 fn rawtherapee_reported_decode_failure(stderr: &str) -> bool {
     let text = stderr.to_ascii_lowercase();
     [
-        "data corrupted",
         "unsupported file",
-        "unknown file",
         "cannot decode",
         "failed to decode",
         "decode failed",
         "decoder error",
+        "unknown file: data corrupted",
+        "data corrupted at",
     ]
     .iter()
     .any(|needle| text.contains(needle))
@@ -5905,6 +6004,8 @@ pub fn run() {
         get_raw_monitor_cache_entry,
         render_raw_monitor_cache_stream,
         cancel_raw_monitor_cache_render,
+        import_monitor_lut,
+        read_monitor_lut,
         clear_raw_monitor_cache,
         get_raw_monitor_cache_size,
         cleanup_raw_monitor_cache_lru,
@@ -6506,7 +6607,7 @@ if (-not (Test-Path -LiteralPath $raw)) {{ exit 11 }}
 
     #[cfg(feature = "pro")]
     #[test]
-    fn raw_monitor_rejects_rawtherapee_decode_failure_stderr() {
+    fn raw_monitor_decode_failure_detection_catches_corruption_warnings() {
         assert!(rawtherapee_reported_decode_failure(
             "unknown file: data corrupted at 5014531"
         ));

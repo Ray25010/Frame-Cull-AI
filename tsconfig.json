@@ -14,7 +14,9 @@
       "@edition/useRawMonitorFeature": ["src/editions/useRawMonitorFeature.pro.ts"],
       "@edition/useRawMonitorViewerFrame": ["src/editions/useRawMonitorViewerFrame.pro.ts"],
       "@edition/useMonitorLut": ["src/editions/useMonitorLut.pro.ts"],
-      "@edition/buildAiPickedPhotoIds": ["src/editions/buildAiPickedPhotoIds.pro.ts"]
+      "@edition/buildAiPickedPhotoIds": ["src/editions/buildAiPickedPhotoIds.pro.ts"],
+      "@edition/extendAboutPanelContent": ["src/editions/extendAboutPanelContent.pro.ts"],
+      "@edition/RawEngineNotice": ["src/editions/RawEngineNotice.pro.tsx"]
     },
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,

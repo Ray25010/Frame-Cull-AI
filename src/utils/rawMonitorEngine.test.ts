@@ -167,6 +167,7 @@ describe('rawMonitorEngine monitor settings', () => {
       lutName: 'soft',
       lutStrength: 0.65,
       cacheVersion: 3,
+      cacheReadyProfiles: {},
     });
   });
 

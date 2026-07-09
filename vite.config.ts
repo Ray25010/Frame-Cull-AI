@@ -40,6 +40,8 @@ export default defineConfig(async ({ command, mode }) => {
         "@edition/useRawMonitorViewerFrame": resolve(__dirname, `src/editions/useRawMonitorViewerFrame.${editionLower}.ts`),
         "@edition/useMonitorLut": resolve(__dirname, `src/editions/useMonitorLut.${editionLower}.ts`),
         "@edition/buildAiPickedPhotoIds": resolve(__dirname, `src/editions/buildAiPickedPhotoIds.${editionLower}.ts`),
+        "@edition/extendAboutPanelContent": resolve(__dirname, `src/editions/extendAboutPanelContent.${editionLower}.ts`),
+        "@edition/RawEngineNotice": resolve(__dirname, `src/editions/RawEngineNotice.${editionLower}.tsx`),
       },
       conditions: ["onnxruntime-web-use-extern-wasm", "browser", "module", "import", "default"],
     },

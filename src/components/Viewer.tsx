@@ -2779,7 +2779,8 @@ const MonitorPreviewPopover = ({
     cacheReady: language === 'zh' ? '缓存已就绪' : 'Cache ready',
   };
   const labels = preview.labels ?? fallbackLabels;
-  const chooseLabel = preview.lutPath ? labels.changeLut : labels.chooseLut;
+  const hasLut = Boolean(preview.lutPath);
+  const chooseLabel = hasLut ? labels.changeLut : labels.chooseLut;
   const cacheLabel = preview.autoExposureEnabled ? labels.cacheAuto : labels.cacheBalanced;
   const autoDetail = preview.autoExposureEnabled
     ? autoExposureAdjustment
@@ -2807,11 +2808,11 @@ const MonitorPreviewPopover = ({
   const stopCacheLabel = preview.labels?.stopCache ?? (language === 'zh' ? '停止生成' : 'Stop');
   const cacheActionHint = preview.labels?.cacheActionHint ?? (
     language === 'zh'
-      ? '同时生成 RAW 监看与自动曝光缓存。后台生成，不影响 JPG 筛片。'
+      ? '同时生成预览与自动曝光缓存。后台生成，不影响 JPG 筛片。'
       : 'Runs in background; JPG culling stays available'
   );
   const rawSwitchTooltip = rawCacheReady
-    ? (language === 'zh' ? '启用已生成的 RAW 监看缓存' : 'Enable generated RAW monitor cache')
+    ? (language === 'zh' ? '启用已生成的预览缓存' : 'Enable generated preview cache')
     : (labels.cacheNotReady ?? fallbackLabels.cacheNotReady);
   const autoSwitchTooltip = autoExposureCacheReady
     ? (preview.autoExposureEnabled ? autoDetail : (language === 'zh' ? '启用已生成的自动曝光缓存' : 'Enable generated auto exposure cache'))
@@ -2938,7 +2939,7 @@ const MonitorPreviewPopover = ({
         active={Boolean(preview.lutEnabled)}
         detail={preview.lutName || lutNotice || undefined}
         onClick={() => {
-          if (!preview.lutEnabled && !preview.lutPath) void preview.onChooseLut?.();
+          if (!preview.lutEnabled && !hasLut) void preview.onChooseLut?.();
           else preview.onLutEnabledChange?.(!preview.lutEnabled);
         }}
       />
@@ -2954,7 +2955,7 @@ const MonitorPreviewPopover = ({
         </button>
         <button
           type="button"
-          disabled={!preview.lutPath}
+          disabled={!hasLut}
           onClick={() => preview.onRemoveLut?.()}
           className={`h-8 rounded-md text-[11px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
             theme === 'dark' ? 'bg-white/[0.06] text-zinc-300 hover:bg-white/[0.10]' : 'bg-white/75 text-slate-700 hover:bg-white'
@@ -2975,7 +2976,7 @@ const MonitorPreviewPopover = ({
         onChange={event => preview.onLutStrengthChange?.(Number(event.currentTarget.value))}
         className={`export-quality-slider mt-1 w-full ${theme}`}
         style={{ '--quality': `${Math.round(lutStrength * 100)}%` } as React.CSSProperties}
-        disabled={!preview.lutPath}
+        disabled={!hasLut}
       />
     </div>
   );
@@ -3088,6 +3089,14 @@ const OriginalViewGlyph = ({ theme }: { theme: 'light' | 'dark' }) => (
   </span>
 );
 
+function isCanvasFriendlyImageUrl(url: string) {
+  return url.startsWith('blob:') || url.startsWith('data:');
+}
+
+function isHttpImageUrl(url: string) {
+  return url.startsWith('http://') || url.startsWith('https://');
+}
+
 const ImageWithAiRegions = ({
   src,
   alt,
@@ -3118,8 +3127,25 @@ const ImageWithAiRegions = ({
   onImageError?: () => void;
 }) => {
   const [paintedSrc, setPaintedSrc] = useState<string | null>(null);
+  const [canvasSafeSrc, setCanvasSafeSrc] = useState<string | null>(null);
+  const [lutSourcePaintedSrc, setLutSourcePaintedSrc] = useState<string | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
+  const lutSourceRef = useRef<HTMLImageElement | null>(null);
+  const lutActive = Boolean(lut);
   const imagePainted = paintedSrc === src;
+  const lutNeedsSafeSource = lutActive && !isCanvasFriendlyImageUrl(src);
+  const lutSourceSrc = lutActive ? (lutNeedsSafeSource ? canvasSafeSrc : src) : null;
+  const lutSourceImage = lutNeedsSafeSource ? lutSourceRef.current : imageRef.current;
+  const lutSourceReady = Boolean(
+    lut
+      && lutSourceSrc
+      && lutSourceImage
+      && imagePainted
+      && (lutNeedsSafeSource ? lutSourcePaintedSrc === lutSourceSrc : imagePainted)
+  );
+  const lutRenderKey = lut && lutSourceReady && lutSourceSrc
+    ? `${src}|${lutSourceSrc}|${lut.size}|${lut.title ?? ''}|${lutStrength}`
+    : null;
   const autoExposureFilter = autoExposureEnabled
     ? buildAutoExposureCssFilter(autoExposureAdjustment ?? null)
     : undefined;
@@ -3137,6 +3163,39 @@ const ImageWithAiRegions = ({
   useEffect(() => {
     setPaintedSrc(null);
   }, [src]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrl: string | null = null;
+    setCanvasSafeSrc(null);
+    setLutSourcePaintedSrc(null);
+
+    if (!lutActive || isCanvasFriendlyImageUrl(src)) {
+      return () => undefined;
+    }
+
+    void fetch(src)
+      .then(response => {
+        if (!response.ok) throw new Error(`Failed to fetch image for LUT preview: ${response.status}`);
+        return response.blob();
+      })
+      .then(blob => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(blob);
+        setCanvasSafeSrc(objectUrl);
+      })
+      .catch(error => {
+        if (!cancelled) {
+          console.warn('Failed to prepare image for LUT preview:', error);
+          setCanvasSafeSrc(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [lutActive, src]);
 
   useEffect(() => {
     if (!autoExposureEnabled || !imagePainted || !imageRef.current) {
@@ -3157,7 +3216,7 @@ const ImageWithAiRegions = ({
     return () => {
       cancelled = true;
     };
-  }, [autoExposureEnabled, imagePainted, onAutoExposureComputed, src]);
+  }, [autoExposureEnabled, imagePainted, src, onAutoExposureComputed]);
 
   return (
     <div className="relative inline-block max-w-full max-h-[calc(100vh-6.5rem)]">
@@ -3165,16 +3224,29 @@ const ImageWithAiRegions = ({
         ref={imageRef}
         src={src}
         alt={alt}
+        crossOrigin={isHttpImageUrl(src) ? 'anonymous' : undefined}
         draggable={false}
         onLoad={() => setPaintedSrc(src)}
         onError={onImageError}
         className={`${previewImageClassName} ${imageReady ? 'opacity-100' : 'opacity-0'}`}
         style={autoExposureFilter ? { filter: autoExposureFilter } : undefined}
       />
-      {lut && imagePainted && imageRef.current && (
+      {lutNeedsSafeSource && lutSourceSrc && (
+        <img
+          ref={lutSourceRef}
+          src={lutSourceSrc}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+          onLoad={() => setLutSourcePaintedSrc(lutSourceSrc)}
+          className="pointer-events-none absolute h-0 w-0 opacity-0"
+        />
+      )}
+      {lut && lutRenderKey && lutSourceImage && (
         <LutPreviewCanvas
-          sourceImage={imageRef.current}
-          renderKey={paintedSrc}
+          sourceImage={lutSourceImage}
+          displayImage={imageRef.current}
+          renderKey={lutRenderKey}
           lut={lut}
           strength={lutStrength}
           cssFilter={autoExposureFilter}
@@ -3222,12 +3294,14 @@ const ImageWithAiRegions = ({
 
 const LutPreviewCanvas = ({
   sourceImage,
+  displayImage,
   renderKey,
   lut,
   strength,
   cssFilter,
 }: {
   sourceImage: HTMLImageElement;
+  displayImage: HTMLImageElement | null;
   renderKey: string;
   lut: CubeLut3D;
   strength: number;
@@ -3240,20 +3314,31 @@ const LutPreviewCanvas = ({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    let cancelled = false;
+    let frameId = 0;
     setReady(false);
-    try {
-      renderLutToCanvas(canvas, sourceImage, lut, strength);
-      setReady(true);
-    } catch (error) {
-      console.warn('Failed to render LUT preview:', error);
-      setReady(false);
-    }
-  }, [lut, renderKey, sourceImage, strength]);
+
+    frameId = window.requestAnimationFrame(() => {
+      if (cancelled) return;
+      try {
+        renderLutToCanvas(canvas, sourceImage, displayImage ?? sourceImage, lut, strength);
+        if (!cancelled) setReady(true);
+      } catch (error) {
+        console.warn('Failed to render LUT preview:', error);
+        if (!cancelled) setReady(false);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [displayImage, lut, renderKey, sourceImage, strength]);
 
   return (
     <canvas
       ref={canvasRef}
-      className={`pointer-events-none absolute inset-0 h-full w-full rounded-sm transition-opacity duration-150 ${ready ? 'opacity-100' : 'opacity-0'}`}
+      className={`pointer-events-none absolute inset-0 h-full w-full rounded-sm transition-opacity duration-200 ease-out ${ready ? 'opacity-100' : 'opacity-0'}`}
       style={cssFilter ? { filter: cssFilter } : undefined}
       aria-hidden="true"
     />
@@ -3262,16 +3347,45 @@ const LutPreviewCanvas = ({
 
 function renderLutToCanvas(
   canvas: HTMLCanvasElement,
-  image: HTMLImageElement,
+  sourceImage: HTMLImageElement,
+  displayImage: HTMLImageElement,
   lut: CubeLut3D,
   strength: number,
 ) {
-  const width = image.naturalWidth || image.width;
-  const height = image.naturalHeight || image.height;
+  const { width, height } = getLutCanvasSize(displayImage);
   if (width <= 0 || height <= 0) throw new Error('Image is not ready');
 
   canvas.width = width;
   canvas.height = height;
+
+  try {
+    renderLutWithWebGl(canvas, sourceImage, lut, strength, width, height);
+    return;
+  } catch (error) {
+    console.warn('WebGL LUT preview failed; falling back to Canvas2D:', error);
+    renderLutWithCanvas2d(canvas, sourceImage, lut, strength, width, height);
+  }
+}
+
+function getLutCanvasSize(image: HTMLImageElement) {
+  const rect = image.getBoundingClientRect();
+  const cssWidth = rect.width || image.width || image.naturalWidth;
+  const cssHeight = rect.height || image.height || image.naturalHeight;
+  const pixelRatio = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+  return {
+    width: Math.max(1, Math.round(cssWidth * pixelRatio)),
+    height: Math.max(1, Math.round(cssHeight * pixelRatio)),
+  };
+}
+
+function renderLutWithWebGl(
+  canvas: HTMLCanvasElement,
+  image: HTMLImageElement,
+  lut: CubeLut3D,
+  strength: number,
+  width: number,
+  height: number,
+) {
   const gl = canvas.getContext('webgl2', { alpha: true, premultipliedAlpha: false });
   if (!gl) throw new Error('WebGL2 is not available');
 
@@ -3354,6 +3468,80 @@ function renderLutToCanvas(
   gl.deleteBuffer(positionBuffer);
   gl.deleteVertexArray(vao);
   gl.deleteProgram(program);
+}
+
+function renderLutWithCanvas2d(
+  canvas: HTMLCanvasElement,
+  image: HTMLImageElement,
+  lut: CubeLut3D,
+  strength: number,
+  width: number,
+  height: number,
+) {
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) throw new Error('Canvas2D is not available');
+
+  ctx.clearRect(0, 0, width, height);
+  ctx.drawImage(image, 0, 0, width, height);
+
+  const imageData = ctx.getImageData(0, 0, width, height);
+  const pixels = imageData.data;
+  const mixStrength = Math.max(0, Math.min(1, strength));
+  for (let index = 0; index < pixels.length; index += 4) {
+    const sourceR = pixels[index] / 255;
+    const sourceG = pixels[index + 1] / 255;
+    const sourceB = pixels[index + 2] / 255;
+    const [gradedR, gradedG, gradedB] = sampleCubeLut(lut, sourceR, sourceG, sourceB);
+    pixels[index] = floatToByte(sourceR * (1 - mixStrength) + gradedR * mixStrength);
+    pixels[index + 1] = floatToByte(sourceG * (1 - mixStrength) + gradedG * mixStrength);
+    pixels[index + 2] = floatToByte(sourceB * (1 - mixStrength) + gradedB * mixStrength);
+  }
+  ctx.putImageData(imageData, 0, 0);
+}
+
+function sampleCubeLut(lut: CubeLut3D, r: number, g: number, b: number): [number, number, number] {
+  const size = lut.size;
+  const maxIndex = size - 1;
+  const normalizedR = normalizeLutInput(r, lut.domainMin[0], lut.domainMax[0]) * maxIndex;
+  const normalizedG = normalizeLutInput(g, lut.domainMin[1], lut.domainMax[1]) * maxIndex;
+  const normalizedB = normalizeLutInput(b, lut.domainMin[2], lut.domainMax[2]) * maxIndex;
+
+  const r0 = Math.floor(normalizedR);
+  const g0 = Math.floor(normalizedG);
+  const b0 = Math.floor(normalizedB);
+  const r1 = Math.min(r0 + 1, maxIndex);
+  const g1 = Math.min(g0 + 1, maxIndex);
+  const b1 = Math.min(b0 + 1, maxIndex);
+  const rt = normalizedR - r0;
+  const gt = normalizedG - g0;
+  const bt = normalizedB - b0;
+
+  return [0, 1, 2].map(channel => {
+    const c000 = cubeLutValue(lut, r0, g0, b0, channel);
+    const c100 = cubeLutValue(lut, r1, g0, b0, channel);
+    const c010 = cubeLutValue(lut, r0, g1, b0, channel);
+    const c110 = cubeLutValue(lut, r1, g1, b0, channel);
+    const c001 = cubeLutValue(lut, r0, g0, b1, channel);
+    const c101 = cubeLutValue(lut, r1, g0, b1, channel);
+    const c011 = cubeLutValue(lut, r0, g1, b1, channel);
+    const c111 = cubeLutValue(lut, r1, g1, b1, channel);
+    const c00 = c000 * (1 - rt) + c100 * rt;
+    const c10 = c010 * (1 - rt) + c110 * rt;
+    const c01 = c001 * (1 - rt) + c101 * rt;
+    const c11 = c011 * (1 - rt) + c111 * rt;
+    const c0 = c00 * (1 - gt) + c10 * gt;
+    const c1 = c01 * (1 - gt) + c11 * gt;
+    return c0 * (1 - bt) + c1 * bt;
+  }) as [number, number, number];
+}
+
+function cubeLutValue(lut: CubeLut3D, r: number, g: number, b: number, channel: number) {
+  const index = ((b * lut.size + g) * lut.size + r) * 3 + channel;
+  return Math.max(0, Math.min(1, lut.data[index] ?? 0));
+}
+
+function normalizeLutInput(value: number, min: number, max: number) {
+  return Math.max(0, Math.min(1, (value - min) / Math.max(max - min, 0.0001)));
 }
 
 function createLutProgram(gl: WebGL2RenderingContext) {

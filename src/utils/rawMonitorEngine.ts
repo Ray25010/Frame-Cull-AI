@@ -1,4 +1,5 @@
 import { Channel, convertFileSrc, invoke } from '@tauri-apps/api/core';
+import { readFile } from '@tauri-apps/plugin-fs';
 import {
   PhotoGroup,
   RawEngineSettings,
@@ -38,6 +39,7 @@ export const DEFAULT_RAW_MONITOR_SETTINGS: RawMonitorSettings = {
 };
 
 const rawMonitorEntryCache = new Map<string, RawMonitorCacheEntry & { cacheUrl?: string }>();
+const rawMonitorCacheObjectUrls = new Map<string, string>();
 
 export function parseRawEngineSettings(value: string | null): RawEngineSettings {
   if (!value) return { ...DEFAULT_RAW_ENGINE_SETTINGS };
@@ -268,7 +270,7 @@ export async function getRawMonitorCacheEntry(
   const normalized = {
     ...entry,
     profileId,
-    cacheUrl: entry.cachePath ? convertFileSrc(entry.cachePath) : undefined,
+    cacheUrl: entry.cachePath ? await rawMonitorCacheObjectUrl(entry.cachePath) : undefined,
   };
   rawMonitorEntryCache.set(memoryKey, normalized);
   return normalized;
@@ -382,7 +384,32 @@ export async function cancelRawMonitorCacheRender() {
 
 export async function clearRawMonitorCache() {
   if (!hasTauriRuntime()) return;
+  clearRawMonitorObjectUrlCache();
   await invoke('clear_raw_monitor_cache');
+}
+
+async function rawMonitorCacheObjectUrl(cachePath: string): Promise<string> {
+  const cached = rawMonitorCacheObjectUrls.get(cachePath);
+  if (cached) return cached;
+
+  try {
+    const bytes = await readFile(cachePath);
+    const blob = new Blob([bytes as BlobPart], { type: 'image/jpeg' });
+    const url = URL.createObjectURL(blob);
+    rawMonitorCacheObjectUrls.set(cachePath, url);
+    return url;
+  } catch (error) {
+    console.warn('[RAW Monitor] Failed to create same-origin cache URL, falling back to asset URL:', error);
+    return convertFileSrc(cachePath);
+  }
+}
+
+function clearRawMonitorObjectUrlCache() {
+  rawMonitorEntryCache.clear();
+  for (const url of rawMonitorCacheObjectUrls.values()) {
+    URL.revokeObjectURL(url);
+  }
+  rawMonitorCacheObjectUrls.clear();
 }
 
 function isRawEngineStatus(value: unknown): value is RawEngineSettings['status'] {

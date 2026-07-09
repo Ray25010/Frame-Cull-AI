@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
-import { readTextFile } from '@tauri-apps/plugin-fs';
 import type { Language } from '../i18n';
 import type {
   PhotoGroup,
@@ -27,6 +27,12 @@ const IDLE_RAW_MONITOR_PROGRESS: RawMonitorCacheProgress = {
 
 type RawMonitorGenerationRequest = {
   monitorSettings: RawMonitorSettings;
+};
+
+type ImportedMonitorLut = {
+  path: string;
+  name: string;
+  content: string;
 };
 
 export function useRawMonitorFeature({
@@ -212,20 +218,19 @@ export function useRawMonitorFeature({
     if (typeof selected !== 'string') return;
 
     try {
-      const content = await readTextFile(selected);
-      const fileName = readableFileName(selected);
-      const lut = parseCubeLut(content, fileName);
+      const imported = await invoke<ImportedMonitorLut>('import_monitor_lut', { sourcePath: selected });
+      const lut = parseCubeLut(imported.content, imported.name);
       persistRawMonitorSettings({
         ...rawMonitorSettings,
         lutEnabled: true,
-        lutPath: selected,
-        lutName: lut.title || fileName,
+        lutPath: imported.path,
+        lutName: lut.title || imported.name,
         lutStrength: rawMonitorSettings.lutStrength || 1,
       });
       notify({
         kind: 'success',
         title: language === 'zh' ? 'LUT 已导入' : 'LUT imported',
-        message: lut.title || fileName,
+        message: lut.title || imported.name,
         autoDismissMs: 2400,
       });
     } catch (error) {
@@ -758,10 +763,6 @@ export function useRawMonitorFeature({
     onCleanupRawMonitorCache,
     clearCache,
   };
-}
-
-function readableFileName(path: string) {
-  return path.split(/[\\/]/).pop() || path;
 }
 
 function formatCacheSize(bytes: number) {

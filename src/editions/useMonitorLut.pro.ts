@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { readTextFile } from '@tauri-apps/plugin-fs';
+import { invoke } from '@tauri-apps/api/core';
 import type { CubeLut3D } from '../types';
 import type { Language } from '../i18n';
 import { parseCubeLut } from '../utils/cubeLut';
@@ -11,6 +11,12 @@ export type MonitorLutState = {
 };
 
 const lutCache = new Map<string, CubeLut3D>();
+
+type ImportedMonitorLut = {
+  path: string;
+  name: string;
+  content: string;
+};
 
 export function useMonitorLut({
   enabled,
@@ -44,7 +50,8 @@ export function useMonitorLut({
       return;
     }
 
-    const cached = lutCache.get(path);
+    const cacheKey = path;
+    const cached = lutCache.get(cacheKey);
     if (cached) {
       setState({
         status: 'ready',
@@ -61,23 +68,31 @@ export function useMonitorLut({
       notice: language === 'zh' ? '正在读取 LUT' : 'Loading LUT',
     });
 
-    void readTextFile(path)
-      .then(content => {
+    const load = invoke<ImportedMonitorLut>('read_monitor_lut', { path }).then(result => ({
+      content: result.content,
+      name: name || result.name,
+    }));
+
+    void load
+      .then(result => {
         if (cancelled) return;
-        const lut = parseCubeLut(content, name || fileNameFromPath(path));
-        lutCache.set(path, lut);
+        const lut = parseCubeLut(result.content, result.name || fileNameFromPath(path));
+        lutCache.set(cacheKey, lut);
         setState({
           status: 'ready',
           lut,
-          notice: `LUT: ${name || lut.title || fileNameFromPath(path)}`,
+          notice: `LUT: ${name || lut.title || result.name || fileNameFromPath(path)}`,
         });
       })
       .catch(error => {
         if (cancelled) return;
+        const message = error instanceof Error ? error.message : String(error);
         setState({
           status: 'error',
           lut: null,
-          notice: error instanceof Error ? error.message : String(error),
+          notice: /forbidden path/i.test(message)
+            ? (language === 'zh' ? 'LUT 权限已失效，请重新导入 .cube' : 'LUT permission expired. Re-import the .cube file.')
+            : message,
         });
       });
 

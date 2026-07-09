@@ -8,7 +8,7 @@ export type RawMonitorViewerFrame = {
   alt: string;
   ai?: AiAnalysis;
   autoExposure?: AutoExposurePreviewAdjustment | null;
-  source?: 'rawtherapee-cache' | 'embedded-preview-ae';
+  source?: 'rawtherapee-cache' | 'embedded-preview';
 };
 
 export type RawMonitorPreviewState = {

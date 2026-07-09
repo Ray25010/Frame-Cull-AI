@@ -4,8 +4,8 @@
   <h1>FrameCull AI</h1>
 
   <p>
-    <strong>本地 AI 筛片、图库整理与 Pro 蒸馏模型工作台</strong><br />
-    <strong>Local AI photo culling, library cleanup, and Pro distilled-model workflow</strong>
+    <strong>本地 AI 筛片、图库整理工作台</strong><br />
+    <strong>Local AI photo culling and library cleanup workspace</strong>
   </p>
 
   <p>
@@ -118,7 +118,6 @@ FrameCull AI 仍处于内测阶段。当前 Windows 安装包已可用于测试�
 
 ### 📮 联系作者
 
-- 微信 / 手机同号：`18102631833`
 - 邮箱：`2923834023@qq.com`
 
 ---
@@ -214,5 +213,4 @@ Feedback on real culling needs, test samples, and workflow improvements is welco
 
 ### 📮 Contact
 
-- WeChat / phone: `18102631833`
 - Email: `2923834023@qq.com`

@@ -14,7 +14,7 @@ export type RawMonitorViewerFrame = {
   alt: string;
   ai?: AiAnalysis;
   autoExposure?: AutoExposurePreviewAdjustment | null;
-  source?: 'rawtherapee-cache' | 'embedded-preview-ae';
+  source?: 'rawtherapee-cache' | 'embedded-preview';
 };
 
 export type RawMonitorPreviewState = {
@@ -64,10 +64,10 @@ export function useRawMonitorViewerFrame({
         url: cached.cacheUrl,
         alt: group.id,
         ai: group.ai,
-        source: 'rawtherapee-cache',
+        source: cached.fallback ? 'embedded-preview' : 'rawtherapee-cache',
       });
       setStatus('ready');
-      setNotice(cacheReadyLabel(language));
+      setNotice(cacheReadyLabel(language, cached.fallback === true));
       return;
     }
 
@@ -83,10 +83,10 @@ export function useRawMonitorViewerFrame({
             url: entry.cacheUrl,
             alt: group.id,
             ai: group.ai,
-            source: 'rawtherapee-cache',
+            source: entry.fallback ? 'embedded-preview' : 'rawtherapee-cache',
           });
           setStatus('ready');
-          setNotice(cacheReadyLabel(language));
+          setNotice(cacheReadyLabel(language, entry.fallback === true));
         } else {
           setStatus('missing');
           setNotice(language === 'zh' ? '需要先生成 RAW 监看缓存' : 'Generate RAW monitor cache first');
@@ -118,6 +118,9 @@ export function useRawMonitorViewerFrame({
   return { frame, notice, status, active };
 }
 
-function cacheReadyLabel(language: Language) {
+function cacheReadyLabel(language: Language, fallback: boolean) {
+  if (fallback) {
+    return language === 'zh' ? 'RAW 内嵌预览兜底' : 'Embedded RAW preview fallback';
+  }
   return language === 'zh' ? 'RAW 监看缓存' : 'RAW monitor cache';
 }
