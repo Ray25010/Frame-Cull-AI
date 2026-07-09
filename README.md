@@ -17,7 +17,7 @@ FrameCull AI 不上传照片，也不会替你黑箱删除照片。AI 负责整�
 
 [FrameCull AI Pro 0.1.6 Beta 2](https://github.com/Ray25010/Frame-Cull-AI/releases/tag/v0.1.6-beta.2)
 
-- [下载 Flash 版 Windows 安装包](https://github.com/Ray25010/Frame-Cull-AI/releases/download/v0.1.6-beta.1/FrameCull.AI.Flash_0.1.6_x64-setup.exe)
+- [下载 Flash 版 Windows 安装包](https://github.com/Ray25010/Frame-Cull-AI/releases/download/v0.1.6-beta.2/FrameCull.AI.Flash_0.1.6-beta.2_x64-setup.exe)
 - [下载 Pro 版 Windows 安装包](https://github.com/Ray25010/Frame-Cull-AI/releases/download/v0.1.6-beta.2/FrameCull.AI.Pro_0.1.6-beta.2_x64-setup.exe)
 
 ## 两个版本怎么选
@@ -118,7 +118,7 @@ Latest beta release:
 
 [FrameCull AI Pro 0.1.6 Beta 2](https://github.com/Ray25010/Frame-Cull-AI/releases/tag/v0.1.6-beta.2)
 
-- [Download Flash for Windows](https://github.com/Ray25010/Frame-Cull-AI/releases/download/v0.1.6-beta.1/FrameCull.AI.Flash_0.1.6_x64-setup.exe)
+- [Download Flash for Windows](https://github.com/Ray25010/Frame-Cull-AI/releases/download/v0.1.6-beta.2/FrameCull.AI.Flash_0.1.6-beta.2_x64-setup.exe)
 - [Download Pro for Windows](https://github.com/Ray25010/Frame-Cull-AI/releases/download/v0.1.6-beta.2/FrameCull.AI.Pro_0.1.6-beta.2_x64-setup.exe)
 
 ## Which Edition Should I Use?
