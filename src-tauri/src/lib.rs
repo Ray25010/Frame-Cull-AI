@@ -5727,7 +5727,7 @@ fn launch_lightroom_classic(executable_path: Option<String>) -> Result<Option<St
     {
         if let Some(path) = detected_path {
             Command::new("open")
-                .arg(path)
+                .arg(&path)
                 .spawn()
                 .map_err(|e| format!("Failed to launch Lightroom Classic: {}", e))?;
             return Ok(Some(path.display().to_string()));

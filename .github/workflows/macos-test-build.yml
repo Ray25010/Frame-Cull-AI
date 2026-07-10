@@ -9,6 +9,12 @@ on:
       - 'codex/**'
     paths:
       - '.github/workflows/macos-test-build.yml'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'public/**'
+      - 'src/**'
+      - 'src-tauri/**'
+      - 'tools/macos/**'
   workflow_dispatch:
 
 jobs:
