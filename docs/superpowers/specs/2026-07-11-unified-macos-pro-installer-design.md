@@ -51,7 +51,7 @@ RawTherapee_macOS_15.4_Universal_5.12_folder/
 
 1. 切换到脚本所在目录并定位唯一的 FrameCull Pro DMG、官方 RawTherapee ZIP、README 和 `SHA256SUMS.txt`。
 2. 使用 `/usr/bin/shasum -a 256 --check` 验证外层包内全部 payload，并再次强制核对 RawTherapee 固定 SHA。
-3. 检查 `/Applications/RawTherapee.app`，并依次尝试用户工具目录、`/usr/local/bin`、`/opt/homebrew/bin` 和 PATH 中的 `rawtherapee-cli`。只有 app 存在、CLI 可执行且 `rawtherapee-cli -v` 成功返回 RawTherapee 版本时，才判定 RawTherapee 健康。
+3. 检查 `/Applications/RawTherapee.app`，并依次尝试用户工具目录、`/usr/local/bin` 和 `/opt/homebrew/bin` 中的 `rawtherapee-cli`。只有 app 存在、固定位置 CLI 可执行且 `rawtherapee-cli -v` 成功返回 RawTherapee 版本时，才判定 RawTherapee 健康。任意 PATH 位置只作为 FrameCull 后端运行时兜底，不能用于安装器跳过修复。
 4. 选择以下唯一状态路径：
    - `UPDATE_FRAMECULL_ONLY`：RawTherapee 健康，完全跳过官方 ZIP 解压、RawTherapee DMG 挂载、app/CLI 替换和 quarantine 修改。
    - `REPAIR_RAWTHERAPEE_AND_UPDATE_FRAMECULL`：RawTherapee app 或 CLI 缺失、不可执行、损坏，或 `-v` 验证失败，执行完整 RawTherapee 修复安装。
@@ -128,6 +128,7 @@ Flash 构建、Windows Pro 内置 RawTherapee 和现有 x64 ONNX Runtime 1.23.2 
 - macOS arm64/x64 runner 均完成 app 构建、签名校验、统一脚本自检、ZIP staging 和 Draft Release。
 - 下载新 Draft Release 两个 ZIP，匹配 GitHub asset digest，并验证全部内部校验和、RawTherapee 固定 SHA、统一脚本可执行位和安全边界。
 - 新包必须是 FrameCull AI Pro，不能出现 FrameCull AI Flash 身份。
+- Actions runner 不执行统一脚本的正常安装模式。真实首次安装和后续仅更新 FrameCull 两条动态路径，仍需 Mac 测试用户各执行一次；最终报告必须把 runner 自检和真实安装证明分开。
 
 ## 成功标准
 
