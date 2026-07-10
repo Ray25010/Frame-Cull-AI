@@ -31,6 +31,9 @@ RawTherapee_macOS_15.4_Universal_5.12_folder/
 4. 等待脚本安装、验证并启动 FrameCull AI Pro。
 
 用户不需要手动打开 DMG、拖动 app、复制 CLI、输入终端命令或配置路径。
+若 Finder 仍拦截 `.command`，README 提供唯一回退方式：在终端输入 `/bin/zsh `（保留末尾空格），把脚本拖入终端后按回车。脚本功能和授权流程保持不变。
+
+统一脚本同时用于首次安装和后续 FrameCull Pro 更新。后续更新时，如果 RawTherapee app 和任一受支持位置的 CLI 已通过真实运行验证，脚本不得重复解压、挂载、替换或修改 RawTherapee，只更新 FrameCull AI Pro。
 
 ## 不采用直接嵌入
 
@@ -48,16 +51,23 @@ RawTherapee_macOS_15.4_Universal_5.12_folder/
 
 1. 切换到脚本所在目录并定位唯一的 FrameCull Pro DMG、官方 RawTherapee ZIP、README 和 `SHA256SUMS.txt`。
 2. 使用 `/usr/bin/shasum -a 256 --check` 验证外层包内全部 payload，并再次强制核对 RawTherapee 固定 SHA。
-3. 在 `mktemp` 临时目录中用 `/usr/bin/ditto -x -k` 解压官方 ZIP，要求 DMG、CLI 和官方说明三个固定文件均存在。
-4. 以只读、非 Finder 弹窗方式挂载两个 DMG，并通过 `hdiutil -plist` 与系统 plist 工具读取实际挂载点。
-5. 通过一个 macOS 标准管理员授权窗口，把两个已构建 app 精确复制到：
+3. 检查 `/Applications/RawTherapee.app`，并依次尝试用户工具目录、`/usr/local/bin`、`/opt/homebrew/bin` 和 PATH 中的 `rawtherapee-cli`。只有 app 存在、CLI 可执行且 `rawtherapee-cli -v` 成功返回 RawTherapee 版本时，才判定 RawTherapee 健康。
+4. 选择以下唯一状态路径：
+   - `UPDATE_FRAMECULL_ONLY`：RawTherapee 健康，完全跳过官方 ZIP 解压、RawTherapee DMG 挂载、app/CLI 替换和 quarantine 修改。
+   - `REPAIR_RAWTHERAPEE_AND_UPDATE_FRAMECULL`：RawTherapee app 或 CLI 缺失、不可执行、损坏，或 `-v` 验证失败，执行完整 RawTherapee 修复安装。
+5. 始终以只读、非 Finder 弹窗方式挂载 FrameCull DMG；仅在修复状态下，才在 `mktemp` 临时目录中解压官方 RawTherapee ZIP、验证其中三个固定文件并挂载 RawTherapee DMG。挂载点通过 `hdiutil -plist` 与系统 plist 工具读取。
+6. 通过一个 macOS 标准管理员授权窗口，始终精确替换：
    - `/Applications/FrameCull AI Pro.app`
+
+   仅在修复状态下额外替换：
    - `/Applications/RawTherapee.app`
-6. 把官方独立 CLI 复制到当前用户目录：
+
+   管理员命令不得在更新状态下触碰 `/Applications/RawTherapee.app`。
+7. 仅在修复状态下，把官方独立 CLI 复制到当前用户目录：
    - `~/Library/Application Support/com.framecull.ai.pro/tools/rawtherapee-cli`
-7. 只对上述两个 app 和 CLI 移除下载隔离标记；不关闭全局 Gatekeeper，不执行 `spctl --master-disable`，不修改其他应用。
-8. 验证 FrameCull app 签名、两个 app 的存在性和 CLI 的 `-v` 输出，成功后启动 FrameCull AI Pro。
-9. 无论成功或失败，都卸载临时 DMG、删除临时目录，并显示中英双语结果。
+8. 始终只对新安装的 FrameCull app 移除 quarantine；仅在修复状态下处理新安装的 RawTherapee app 和 CLI。不关闭全局 Gatekeeper，不执行 `spctl --master-disable`，不修改其他应用。
+9. 验证 FrameCull app 签名；更新状态复用先前已通过验证的 CLI，修复状态重新执行 CLI `-v`。全部成功后启动 FrameCull AI Pro。
+10. 无论成功或失败，都卸载本次实际挂载的映像、删除临时目录，并显示中英双语结果和所走状态路径。
 
 脚本不得使用 `eval`，管理员命令只能操作固定目标路径。动态来源路径必须经过 AppleScript `quoted form` 或等价的安全参数传递，不能拼接未经转义的 shell 输入。
 
@@ -67,6 +77,7 @@ RawTherapee_macOS_15.4_Universal_5.12_folder/
 - 用户已接受可能出现一次管理员密码窗口。
 - 当前 FrameCull 仍是 ad-hoc 签名且未公证，因此没有 Developer ID 时，首次右键“打开”统一安装脚本仍是不可消除的最小 Gatekeeper 步骤。
 - 脚本复制已签名的 FrameCull app，不修改其 bundle 内容；复制和移除 quarantine 不应改变代码签名。
+- 后续更新即使需要管理员授权替换 FrameCull，也不得因此重新安装健康的 RawTherapee。
 
 ## FrameCull CLI 自动探测
 
@@ -98,6 +109,8 @@ Flash 构建、Windows Pro 内置 RawTherapee 和现有 x64 ONNX Runtime 1.23.2 
 ## 失败处理
 
 - 任一哈希、归档结构、DMG、app、CLI、签名或挂载步骤失败时立即停止，不启动 FrameCull。
+- RawTherapee 健康判断必须依赖 app 存在、CLI 可执行和 `-v` 成功三个条件；单纯存在文件不足以跳过修复。
+- 更新状态不得解压官方 RawTherapee ZIP、挂载其 DMG 或修改 RawTherapee app/CLI。
 - 管理员授权被取消时，不继续复制或移除隔离标记。
 - 若目标 app 已存在，授权窗口中的固定安装命令允许精确替换同名 app；不删除其他路径。
 - trap 必须清理已挂载映像和临时目录，避免残留卷或临时文件。
@@ -109,6 +122,7 @@ Flash 构建、Windows Pro 内置 RawTherapee 和现有 x64 ONNX Runtime 1.23.2 
 
 - RawTherapee macOS 候选路径测试先失败、实现后通过。
 - 统一脚本语法和 `--verify-only` 包契约通过。
+- 安装器状态契约覆盖“健康时仅更新 FrameCull”和“缺失或验证失败时修复 RawTherapee”两条路径。
 - 29 个前端测试文件、220 项既有测试继续通过。
 - Pro release 检查和 `cargo check --features pro-bench --bins` 通过。
 - macOS arm64/x64 runner 均完成 app 构建、签名校验、统一脚本自检、ZIP staging 和 Draft Release。
@@ -117,4 +131,4 @@ Flash 构建、Windows Pro 内置 RawTherapee 和现有 x64 ONNX Runtime 1.23.2 
 
 ## 成功标准
 
-测试用户拿到对应架构 ZIP 后，只需解压、右键打开一个统一安装脚本，并在需要时确认一次系统授权。脚本完成两个 app 与 CLI 的安装、验证和启动；FrameCull 自动识别 CLI，用户无需输入任何技术命令。
+测试用户拿到对应架构 ZIP 后，只需解压、右键打开一个统一安装脚本，并在需要时确认一次系统授权。首次安装或 RawTherapee 损坏时，脚本完成两个 app 与 CLI 的安装；后续正常更新只替换 FrameCull AI Pro.app。FrameCull 自动识别 CLI，用户无需输入任何技术命令。
