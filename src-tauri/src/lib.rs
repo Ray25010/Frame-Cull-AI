@@ -3815,6 +3815,22 @@ fn bundled_rawtherapee_candidates(app: &tauri::AppHandle) -> Vec<PathBuf> {
     candidates
 }
 
+#[cfg(any(test, all(feature = "pro", target_os = "macos")))]
+fn macos_rawtherapee_candidates(home_dir: Option<&Path>) -> Vec<(PathBuf, &'static str)> {
+    let mut candidates = Vec::new();
+
+    if let Some(home_dir) = home_dir {
+        candidates.push((
+            home_dir.join("Library/Application Support/com.framecull.ai.pro/tools/rawtherapee-cli"),
+            "SYSTEM",
+        ));
+    }
+
+    candidates.push((PathBuf::from("/usr/local/bin/rawtherapee-cli"), "SYSTEM"));
+    candidates.push((PathBuf::from("/opt/homebrew/bin/rawtherapee-cli"), "SYSTEM"));
+    candidates
+}
+
 #[cfg(feature = "pro")]
 fn rawtherapee_candidates(app: Option<&tauri::AppHandle>) -> Vec<(PathBuf, &'static str)> {
     let mut candidates = Vec::new();
@@ -3823,6 +3839,12 @@ fn rawtherapee_candidates(app: Option<&tauri::AppHandle>) -> Vec<(PathBuf, &'sta
         for path in bundled_rawtherapee_candidates(app) {
             candidates.push((path, "BUNDLED"));
         }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        let home_dir = std::env::var_os("HOME").map(PathBuf::from);
+        candidates.extend(macos_rawtherapee_candidates(home_dir.as_deref()));
     }
 
     if let Some(paths) = std::env::var_os("PATH") {
@@ -3850,14 +3872,6 @@ fn rawtherapee_candidates(app: Option<&tauri::AppHandle>) -> Vec<(PathBuf, &'sta
                 }
             }
         }
-    }
-
-    #[cfg(target_os = "macos")]
-    {
-        candidates.push((
-            PathBuf::from("/Applications/RawTherapee.app/Contents/MacOS/rawtherapee-cli"),
-            "SYSTEM",
-        ));
     }
 
     candidates
@@ -6675,6 +6689,32 @@ mod tests {
         assert_eq!(
             result.bundled_engine_version.as_deref(),
             Some(RAWTHERAPEE_BUNDLED_VERSION)
+        );
+    }
+
+    #[test]
+    fn macos_rawtherapee_candidates_match_supported_priority_order() {
+        let home_dir = PathBuf::from("/Users/framecull-test");
+        let candidates = macos_rawtherapee_candidates(Some(home_dir.as_path()));
+
+        assert_eq!(
+            candidates,
+            vec![
+                (
+                    PathBuf::from(
+                        "/Users/framecull-test/Library/Application Support/com.framecull.ai.pro/tools/rawtherapee-cli",
+                    ),
+                    "SYSTEM",
+                ),
+                (
+                    PathBuf::from("/usr/local/bin/rawtherapee-cli"),
+                    "SYSTEM",
+                ),
+                (
+                    PathBuf::from("/opt/homebrew/bin/rawtherapee-cli"),
+                    "SYSTEM",
+                ),
+            ]
         );
     }
 
