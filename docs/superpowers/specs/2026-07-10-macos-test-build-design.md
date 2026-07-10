@@ -35,6 +35,10 @@ only from the installed FrameCull application.
    `ditto` to create a Finder-friendly ZIP.
 6. Upload the ZIP as a GitHub Actions artifact.
 
+Before this workflow reaches the default branch, changing the workflow file on
+a `codex/**` branch bootstraps one build through a narrowly scoped `push`
+trigger. Normal subsequent runs use `workflow_dispatch` after merge.
+
 ## Known Blockers
 
 - The committed lockfile lacks the current package override snapshot, causing
