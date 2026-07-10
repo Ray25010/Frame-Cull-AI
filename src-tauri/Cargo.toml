@@ -20,7 +20,7 @@ path = "src/main.rs"
 
 [[bin]]
 name = "pro-infer-bench"
-path = "src/bin/pro-infer-bench.rs"
+path = "src/pro-infer-bench.rs"
 required-features = ["pro"]
 
 [features]

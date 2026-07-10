@@ -1,5 +1,7 @@
 #![cfg(feature = "pro")]
 
+// Keep this outside src/bin so Tauri does not auto-bundle the Pro-only utility in Flash builds.
+
 use std::fs;
 use std::path::{Path, PathBuf};
 

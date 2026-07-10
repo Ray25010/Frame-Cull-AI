@@ -2,7 +2,7 @@
 """Run a Pro Semantic ONNX manifest over an eval audit and emit pro-infer JSON.
 
 This is a server/lab fallback for machines that have Python ONNX Runtime but do
-not have the Rust toolchain needed to build src-tauri/src/bin/pro-infer-bench.
+not have the Rust toolchain needed to build src-tauri/src/pro-infer-bench.rs.
 It mirrors the ProHeadScores JSON shape consumed by bench-pro-semantic-student.
 """
 
