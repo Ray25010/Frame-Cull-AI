@@ -104,6 +104,7 @@ jobs:
             const fs = require("node:fs");
             const model = "pro-models/semantic_student_v2_grounded_convnext_v14_five_mountain_region/model.int8.onnx";
             const manifest = "pro-models/semantic_student_v2_grounded_convnext_v14_five_mountain_region/manifest.int8.json";
+            const rawTherapeeManifestPath = "src-tauri/vendor/rawtherapee/rawtherapee-5.12-macos-universal.json";
             for (const path of ["src-tauri/tauri.pro.macos.conf.json", "src-tauri/tauri.pro.macos.x64.conf.json"]) {
               const config = JSON.parse(fs.readFileSync(path, "utf8"));
               if (config.productName !== "FrameCull AI Pro") throw new Error(`${path}: wrong Pro productName`);
@@ -112,11 +113,33 @@ jobs:
               if (resources[model] !== model || resources[manifest] !== manifest) throw new Error(`${path}: Pro model resources missing`);
               if (Object.keys(resources).some(resource => /windows-x64|RawTherapee_5\.12_win64/i.test(resource))) throw new Error(`${path}: Windows RawTherapee leaked into macOS config`);
             }
+            const rawTherapeeManifest = JSON.parse(fs.readFileSync(rawTherapeeManifestPath, "utf8"));
+            if (rawTherapeeManifest.artifact !== "RawTherapee_macOS_15.4_Universal_5.12.zip") throw new Error(`${rawTherapeeManifestPath}: wrong artifact`);
+            if (typeof rawTherapeeManifest.sourceUrl !== "string" || !rawTherapeeManifest.sourceUrl.startsWith("https://github.com/RawTherapee/RawTherapee/releases/download/")) throw new Error(`${rawTherapeeManifestPath}: wrong sourceUrl`);
+            if (rawTherapeeManifest.sha256 !== "2f284d1c023f53f0c492aecc3f7635d6b7807ef22d5413ee55715d81e81fe688") throw new Error(`${rawTherapeeManifestPath}: wrong sha256`);
           '
 
           if [[ "${{ matrix.rust_target }}" == "x86_64-apple-darwin" ]]; then
             test -f src-tauri/vendor/onnxruntime/macos-x64/libonnxruntime.1.23.2.dylib
           fi
+
+      - name: Download official RawTherapee installer
+        id: rawtherapee
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          manifest="src-tauri/vendor/rawtherapee/rawtherapee-5.12-macos-universal.json"
+          artifact="$(node -e 'const fs=require("node:fs"); const m=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); process.stdout.write(m.artifact)' "${manifest}")"
+          source_url="$(node -e 'const fs=require("node:fs"); const m=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); process.stdout.write(m.sourceUrl)' "${manifest}")"
+          expected_sha="$(node -e 'const fs=require("node:fs"); const m=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); process.stdout.write(m.sha256)' "${manifest}")"
+          archive="${RUNNER_TEMP}/${artifact}"
+
+          curl --fail --location --retry 3 --output "${archive}" "${source_url}"
+          echo "${expected_sha}  ${archive}" | /usr/bin/shasum -a 256 --check
+
+          echo "archive_path=${archive}" >> "${GITHUB_OUTPUT}"
+          echo "artifact_name=${artifact}" >> "${GITHUB_OUTPUT}"
 
       - name: Build Tauri Pro app
         run: pnpm exec tauri build --features pro --config "${{ matrix.tauri_config }}" --target "${{ matrix.rust_target }}"
@@ -127,6 +150,8 @@ jobs:
           RUST_TARGET: ${{ matrix.rust_target }}
           EXPECTED_ARCH: ${{ matrix.expected_arch }}
           ARTIFACT_LABEL: ${{ matrix.artifact_label }}
+          RAWTHERAPEE_ARCHIVE: ${{ steps.rawtherapee.outputs.archive_path }}
+          RAWTHERAPEE_ARTIFACT: ${{ steps.rawtherapee.outputs.artifact_name }}
         shell: bash
         run: |
           set -euo pipefail
@@ -143,6 +168,8 @@ jobs:
           test -x "${app_binary}"
           test -f "${model_root}/model.int8.onnx"
           test -f "${model_root}/manifest.int8.json"
+          test -f "${RAWTHERAPEE_ARCHIVE}"
+          test "$(basename "${RAWTHERAPEE_ARCHIVE}")" = "${RAWTHERAPEE_ARTIFACT}"
           test ! -e "${app_path}/Contents/Resources/raw-engines/rawtherapee/windows-x64"
           ! find "${app_path}" -type f -name 'pro-infer-bench*' -print -quit | grep -q .
 
@@ -175,13 +202,14 @@ jobs:
           archive_path="${GITHUB_WORKSPACE}/FrameCull-Pro-${ARTIFACT_LABEL}.zip"
           mkdir -p "${stage_dir}"
           cp "${dmg_path}" "${stage_dir}/"
+          cp "${RAWTHERAPEE_ARCHIVE}" "${stage_dir}/${RAWTHERAPEE_ARTIFACT}"
           cp tools/macos/FrameCull-Pro-First-Launch.command "${stage_dir}/"
           cp tools/macos/README-FrameCull-Pro-macOS-first-launch.txt "${stage_dir}/"
           chmod +x "${stage_dir}/FrameCull-Pro-First-Launch.command"
 
           (
             cd "${stage_dir}"
-            /usr/bin/shasum -a 256 ./*.dmg FrameCull-Pro-First-Launch.command README-FrameCull-Pro-macOS-first-launch.txt > SHA256SUMS.txt
+            /usr/bin/shasum -a 256 ./*.dmg "${RAWTHERAPEE_ARTIFACT}" FrameCull-Pro-First-Launch.command README-FrameCull-Pro-macOS-first-launch.txt > SHA256SUMS.txt
           )
 
           /usr/bin/ditto -c -k --sequesterRsrc --keepParent "${stage_dir}" "${archive_path}"
@@ -229,4 +257,4 @@ jobs:
             --prerelease \
             --target "${GITHUB_SHA}" \
             --title "FrameCull AI Pro macOS Test 0.1.6" \
-            --notes "Internal unnotarized FrameCull AI Pro macOS test packages from Actions run ${GITHUB_RUN_ID}. Each ZIP contains the Pro app DMG, bundled Pro model, scoped first-launch helper, Chinese instructions, and checksums."
+            --notes "Internal unnotarized FrameCull AI Pro macOS test packages from Actions run ${GITHUB_RUN_ID}. Each Pro ZIP contains the Pro app DMG, bundled Pro model, scoped first-launch helper, Chinese instructions, and the pinned official RawTherapee 5.12 macOS Universal installer ZIP. SHA256SUMS.txt covers the DMG, RawTherapee ZIP, executable helper, and Chinese README. RawTherapee is supplied unchanged as a separate installer archive; it is not embedded in the app or DMG, automatically installed, re-signed, or notarized by this workflow."
