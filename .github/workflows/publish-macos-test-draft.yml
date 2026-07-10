@@ -1,0 +1,59 @@
+name: Publish macOS Test Draft
+
+permissions:
+  actions: read
+  contents: write
+
+on:
+  push:
+    branches:
+      - 'codex/**'
+    paths:
+      - '.github/workflows/publish-macos-test-draft.yml'
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Successful Build macOS Test Packages run ID
+        required: true
+        type: string
+
+jobs:
+  publish-draft:
+    name: Copy artifacts to draft release
+    runs-on: ubuntu-latest
+    env:
+      SOURCE_RUN_ID: ${{ inputs.run_id || '29097861619' }}
+
+    steps:
+      - name: Download successful macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: FrameCull-macOS-*
+          path: packages
+          merge-multiple: true
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ env.SOURCE_RUN_ID }}
+
+      - name: Verify packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f packages/FrameCull-macOS-arm64.zip
+          test -f packages/FrameCull-macOS-x64.zip
+          sha256sum packages/*.zip
+
+      - name: Create private draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="macos-test-0.1.6-run-${SOURCE_RUN_ID}"
+          gh release create "${tag}" packages/*.zip \
+            --draft \
+            --prerelease \
+            --target "${GITHUB_SHA}" \
+            --title "FrameCull AI Flash macOS Test 0.1.6" \
+            --notes "Internal unnotarized macOS test packages from Actions run ${SOURCE_RUN_ID}. Each ZIP includes a DMG, scoped first-launch helper, Chinese instructions, and checksums."
+
