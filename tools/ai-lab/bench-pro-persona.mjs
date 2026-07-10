@@ -35,7 +35,7 @@ await mkdir(outputDir, { recursive: true });
 const cargoArgs = [
   'run',
   '--manifest-path', 'src-tauri/Cargo.toml',
-  '--features', 'pro',
+  '--features', 'pro-bench',
   '--bin', 'pro-infer-bench',
 ];
 

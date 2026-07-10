@@ -73,7 +73,7 @@ if (skipInfer) {
   const cargoArgs = [
     'run',
     '--manifest-path', 'src-tauri/Cargo.toml',
-    '--features', 'pro',
+    '--features', 'pro-bench',
     '--bin', 'pro-infer-bench',
   ];
   if (cargoProfile === 'release') cargoArgs.push('--release');

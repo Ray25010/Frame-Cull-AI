@@ -21,11 +21,12 @@ path = "src/main.rs"
 [[bin]]
 name = "pro-infer-bench"
 path = "src/pro-infer-bench.rs"
-required-features = ["pro"]
+required-features = ["pro-bench"]
 
 [features]
 default = []
 pro = ["dep:ort", "dep:ndarray", "dep:rayon", "dep:windows-sys"]
+pro-bench = ["pro"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
