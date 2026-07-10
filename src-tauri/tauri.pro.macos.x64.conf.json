@@ -18,7 +18,14 @@
       "pro-models/placeholder/model.onnx": "pro-models/placeholder/model.onnx",
       "pro-models/placeholder/manifest.json": "pro-models/placeholder/manifest.json",
       "pro-models/semantic_student_v2_grounded_convnext_v14_five_mountain_region/model.int8.onnx": "pro-models/semantic_student_v2_grounded_convnext_v14_five_mountain_region/model.int8.onnx",
-      "pro-models/semantic_student_v2_grounded_convnext_v14_five_mountain_region/manifest.int8.json": "pro-models/semantic_student_v2_grounded_convnext_v14_five_mountain_region/manifest.int8.json"
+      "pro-models/semantic_student_v2_grounded_convnext_v14_five_mountain_region/manifest.int8.json": "pro-models/semantic_student_v2_grounded_convnext_v14_five_mountain_region/manifest.int8.json",
+      "vendor/onnxruntime/onnxruntime-1.23.2-macos-x64.json": "onnxruntime/macos-x64/runtime-manifest.json",
+      "vendor/onnxruntime/macos-x64/LICENSE": "onnxruntime/macos-x64/LICENSE",
+      "vendor/onnxruntime/macos-x64/ThirdPartyNotices.txt": "onnxruntime/macos-x64/ThirdPartyNotices.txt",
+      "vendor/onnxruntime/macos-x64/VERSION_NUMBER": "onnxruntime/macos-x64/VERSION_NUMBER"
+    },
+    "macOS": {
+      "frameworks": ["vendor/onnxruntime/macos-x64/libonnxruntime.1.23.2.dylib"]
     }
   }
 }

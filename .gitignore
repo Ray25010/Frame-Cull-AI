@@ -22,6 +22,7 @@ __pycache__/
 src-tauri/target/
 tools/pro-raw-preview-lab/target/
 src-tauri/vendor/nvidia-cuda/
+src-tauri/vendor/onnxruntime/macos-x64/
 src-tauri/vendor/rawtherapee/downloads/
 src-tauri/vendor/rawtherapee/windows-x64/
 

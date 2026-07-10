@@ -133,7 +133,7 @@ fn build_session(
     let builder = builder
         .with_optimization_level(GraphOptimizationLevel::Level3)
         .map_err(|error| format!("optimization level failed: {error}"))?;
-    let mut builder = builder
+    let builder = builder
         .with_execution_providers([dispatch.clone().error_on_failure()])
         .map_err(|error| format!("ep registration failed: {error}"))?;
     builder

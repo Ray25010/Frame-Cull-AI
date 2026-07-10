@@ -7,6 +7,8 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 const distDir = join(root, "dist");
 const tauriFlashConfig = join(root, "src-tauri", "tauri.flash.conf.json");
 const tauriProConfig = join(root, "src-tauri", "tauri.pro.conf.json");
+const tauriProMacosConfig = join(root, "src-tauri", "tauri.pro.macos.conf.json");
+const tauriProMacosX64Config = join(root, "src-tauri", "tauri.pro.macos.x64.conf.json");
 const rawTherapeeVendorDir = join(root, "src-tauri", "vendor", "rawtherapee", "windows-x64", "RawTherapee_5.12_win64_release");
 const rawTherapeeCli = join(rawTherapeeVendorDir, "rawtherapee-cli.exe");
 const rawTherapeeNotice = join(root, "src-tauri", "vendor", "rawtherapee", "THIRD_PARTY_NOTICES.txt");
@@ -15,16 +17,24 @@ const cudaRuntimeVendorDir = join(root, "src-tauri", "vendor", "nvidia-cuda", "w
 const cudaRuntimeLock = join(root, "src-tauri", "vendor", "nvidia-cuda", "windows-x64", "runtime-lock.json");
 const cudaRuntimeLicenses = join(root, "src-tauri", "vendor", "nvidia-cuda", "windows-x64", "licenses");
 const cudaRuntimeNotice = join(root, "src-tauri", "vendor", "nvidia-cuda", "windows-x64", "THIRD_PARTY_NOTICES.txt");
+const proModelRelativeDir = "pro-models/semantic_student_v2_grounded_convnext_v14_five_mountain_region";
+const proModelRelativePath = `${proModelRelativeDir}/model.int8.onnx`;
+const proManifestRelativePath = `${proModelRelativeDir}/manifest.int8.json`;
+const ortMacosX64ManifestRelativePath = "vendor/onnxruntime/onnxruntime-1.23.2-macos-x64.json";
+const ortMacosX64DylibRelativePath = "vendor/onnxruntime/macos-x64/libonnxruntime.1.23.2.dylib";
 
-function readEditionArg(argv) {
-  const equalsArg = argv.find((arg) => arg.startsWith("--edition="));
+function readArg(argv, flag) {
+  const equalsArg = argv.find((arg) => arg.startsWith(`${flag}=`));
   if (equalsArg) return equalsArg.split("=")[1];
-  const flagIndex = argv.indexOf("--edition");
+  const flagIndex = argv.indexOf(flag);
   if (flagIndex >= 0) return argv[flagIndex + 1];
   return undefined;
 }
 
-const edition = (readEditionArg(process.argv) || "flash").toLowerCase();
+const edition = (readArg(process.argv, "--edition") || "flash").toLowerCase();
+const targetPlatform = (readArg(process.argv, "--target-platform") || process.platform).toLowerCase();
+const isWindowsTarget = targetPlatform === "win32" || targetPlatform === "windows";
+const isMacosTarget = targetPlatform === "darwin" || targetPlatform === "macos";
 const textExtensions = new Set([".html", ".js", ".css", ".json", ".svg", ".txt"]);
 const forbiddenFiles = new Set([".map", ".ts", ".tsx", ".rs"]);
 const forbiddenText = [
@@ -111,6 +121,71 @@ function fileSha256(path) {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
+function checkProModelResources(config, configLabel) {
+  const resources = config?.bundle?.resources ?? {};
+  for (const relativePath of [proModelRelativePath, proManifestRelativePath]) {
+    if (resources[relativePath] !== relativePath) {
+      failures.push(`${configLabel}: missing Pro model resource mapping for ${relativePath}`);
+    }
+    const sourcePath = join(root, "src-tauri", relativePath);
+    if (!existsSync(sourcePath)) {
+      failures.push(`${rel(sourcePath)}: missing Pro model resource`);
+    }
+  }
+
+  const manifestPath = join(root, "src-tauri", proManifestRelativePath);
+  const modelPath = join(root, "src-tauri", proModelRelativePath);
+  if (existsSync(manifestPath) && existsSync(modelPath)) {
+    const manifest = readJson(manifestPath);
+    if (typeof manifest?.sha256 !== "string" || fileSha256(modelPath) !== manifest.sha256.toLowerCase()) {
+      failures.push(`${rel(modelPath)}: SHA-256 does not match Pro model manifest`);
+    }
+  }
+}
+
+function checkMacosProConfig(path, configLabel, requireIntelRuntime) {
+  const config = readJson(path);
+  if (!config) return;
+  if (config.productName !== "FrameCull AI Pro") {
+    failures.push(`${configLabel}: productName must be FrameCull AI Pro`);
+  }
+  if (config.identifier !== "com.framecull.ai.pro") {
+    failures.push(`${configLabel}: identifier must be com.framecull.ai.pro`);
+  }
+  if (config.build?.beforeBuildCommand !== "pnpm run build:release:pro:macos") {
+    failures.push(`${configLabel}: must use the macOS Pro release check`);
+  }
+
+  const configText = JSON.stringify(config);
+  if (/windows-x64|RawTherapee_5\.12_win64|cuda-runtime/i.test(configText)) {
+    failures.push(`${configLabel}: Windows-only runtime leaked into macOS config`);
+  }
+  checkProModelResources(config, configLabel);
+
+  if (requireIntelRuntime) {
+    const frameworks = config.bundle?.macOS?.frameworks ?? [];
+    if (!frameworks.includes(ortMacosX64DylibRelativePath)) {
+      failures.push(`${configLabel}: missing pinned Intel ONNX Runtime dylib framework`);
+    }
+    const resources = config.bundle?.resources ?? {};
+    if (resources[ortMacosX64ManifestRelativePath] !== "onnxruntime/macos-x64/runtime-manifest.json") {
+      failures.push(`${configLabel}: missing Intel ONNX Runtime provenance manifest mapping`);
+    }
+
+    const runtimeManifestPath = join(root, "src-tauri", ortMacosX64ManifestRelativePath);
+    const runtimeManifest = readJson(runtimeManifestPath);
+    if (runtimeManifest?.version !== "1.23.2") {
+      failures.push(`${rel(runtimeManifestPath)}: unexpected ONNX Runtime version`);
+    }
+    if (runtimeManifest?.sha256 !== "d10359e16347b57d9959f7e80a225a5b4a66ed7d7e007274a15cae86836485a6") {
+      failures.push(`${rel(runtimeManifestPath)}: unexpected ONNX Runtime archive SHA-256`);
+    }
+    if (!/^https:\/\/github\.com\/microsoft\/onnxruntime\/releases\/download\//.test(runtimeManifest?.sourceUrl ?? "")) {
+      failures.push(`${rel(runtimeManifestPath)}: ONNX Runtime source must be the official Microsoft release`);
+    }
+  }
+}
+
 function checkCudaRuntimeLock() {
   if (!existsSync(cudaRuntimeLock)) {
     failures.push(`${rel(cudaRuntimeLock)}: missing CUDA runtime lock`);
@@ -189,30 +264,35 @@ function checkTauriConfigSeparation() {
   }
 
   if (edition === "pro") {
-    const proText = JSON.stringify(proConfig ?? {});
-    if (!/raw-engines\/rawtherapee/i.test(proText)) {
-      failures.push("src-tauri/tauri.pro.conf.json: missing Pro bundled RawTherapee resource mapping");
-    }
-    for (const [path, label] of [
-      [rawTherapeeCli, "bundled rawtherapee-cli.exe"],
-      [rawTherapeeNotice, "RawTherapee third-party notice"],
-      [rawTherapeeManifest, "RawTherapee version manifest"],
-    ]) {
-      if (!existsSync(path)) {
-        failures.push(`${rel(path)}: missing ${label}`);
+    if (isWindowsTarget) {
+      const proText = JSON.stringify(proConfig ?? {});
+      if (!/raw-engines\/rawtherapee/i.test(proText)) {
+        failures.push("src-tauri/tauri.pro.conf.json: missing Pro bundled RawTherapee resource mapping");
       }
-    }
-    if (existsSync(rawTherapeeManifest)) {
-      const manifestText = readFileSync(rawTherapeeManifest, "utf8");
-      if (!/a6de1797da462975435846db7b79a981557350af1bdac07525bf6884ede805dd/i.test(manifestText)) {
-        failures.push("src-tauri/vendor/rawtherapee/rawtherapee-5.12-win64.json: missing pinned SHA-256");
+      for (const [path, label] of [
+        [rawTherapeeCli, "bundled rawtherapee-cli.exe"],
+        [rawTherapeeNotice, "RawTherapee third-party notice"],
+        [rawTherapeeManifest, "RawTherapee version manifest"],
+      ]) {
+        if (!existsSync(path)) {
+          failures.push(`${rel(path)}: missing ${label}`);
+        }
       }
-    }
-    if (/cuda-runtime\/windows-x64\/runtime/i.test(proText)) {
-      if (!/cuda-runtime\/windows-x64\/runtime-lock\.json/i.test(proText)) {
-        failures.push("src-tauri/tauri.pro.conf.json: missing CUDA runtime lock resource mapping");
+      if (existsSync(rawTherapeeManifest)) {
+        const manifestText = readFileSync(rawTherapeeManifest, "utf8");
+        if (!/a6de1797da462975435846db7b79a981557350af1bdac07525bf6884ede805dd/i.test(manifestText)) {
+          failures.push("src-tauri/vendor/rawtherapee/rawtherapee-5.12-win64.json: missing pinned SHA-256");
+        }
       }
-      checkCudaRuntimeLock();
+      if (/cuda-runtime\/windows-x64\/runtime/i.test(proText)) {
+        if (!/cuda-runtime\/windows-x64\/runtime-lock\.json/i.test(proText)) {
+          failures.push("src-tauri/tauri.pro.conf.json: missing CUDA runtime lock resource mapping");
+        }
+        checkCudaRuntimeLock();
+      }
+    } else if (isMacosTarget) {
+      checkMacosProConfig(tauriProMacosConfig, "src-tauri/tauri.pro.macos.conf.json", false);
+      checkMacosProConfig(tauriProMacosX64Config, "src-tauri/tauri.pro.macos.x64.conf.json", true);
     }
   }
 }

@@ -11,6 +11,7 @@
     "build:release": "pnpm run build:release:flash",
     "build:release:flash": "pnpm run build:flash && node tools/postprocess-release-artifacts.mjs && node tools/check-release-artifacts.mjs --edition flash",
     "build:release:pro": "pnpm run build:pro && node tools/postprocess-release-artifacts.mjs && node tools/check-release-artifacts.mjs --edition pro",
+    "build:release:pro:macos": "pnpm run build:pro && node tools/postprocess-release-artifacts.mjs && node tools/check-release-artifacts.mjs --edition pro --target-platform macos",
     "check:release": "node tools/check-release-artifacts.mjs",
     "test": "vitest run",
     "preview": "vite preview",

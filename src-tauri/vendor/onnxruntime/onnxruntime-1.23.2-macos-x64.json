@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "name": "Microsoft ONNX Runtime",
+  "version": "1.23.2",
+  "platform": "macos-x64",
+  "artifact": "onnxruntime-osx-x86_64-1.23.2.tgz",
+  "sourceUrl": "https://github.com/microsoft/onnxruntime/releases/download/v1.23.2/onnxruntime-osx-x86_64-1.23.2.tgz",
+  "releaseUrl": "https://github.com/microsoft/onnxruntime/releases/tag/v1.23.2",
+  "sha256": "d10359e16347b57d9959f7e80a225a5b4a66ed7d7e007274a15cae86836485a6",
+  "dylib": "libonnxruntime.1.23.2.dylib"
+}

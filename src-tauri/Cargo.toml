@@ -48,12 +48,12 @@ image = { version = "0.25", default-features = false, features = ["jpeg"] }
 # Pro-only native ONNX Runtime inference layer (process-internal `ort` binding).
 # These crates must never enter the Flash dependency tree; they are gated behind
 # the optional `pro` feature above and pulled in only via `dep:` activation.
-# `ort` 2.0.0-rc.12 wraps ONNX Runtime 1.24 and depends on ndarray 0.17.
+# `ort` 2.0.0-rc.11 wraps ONNX Runtime 1.23 and depends on ndarray 0.17.
 [dependencies.ort]
-version = "2.0.0-rc.12"
+version = "=2.0.0-rc.11"
 optional = true
 default-features = false
-features = ["std", "ndarray", "download-binaries", "copy-dylibs", "tracing", "api-24", "tls-rustls"]
+features = ["std", "ndarray", "download-binaries", "copy-dylibs", "tracing", "tls-rustls"]
 
 [dependencies.ndarray]
 version = "0.17"
@@ -71,13 +71,13 @@ features = ["Win32_System_LibraryLoader"]
 # Execution-provider features are platform-conditioned so a build only compiles
 # the EP backends that exist on the target. CPU is always the final fallback.
 [target.'cfg(windows)'.dependencies.ort]
-version = "2.0.0-rc.12"
+version = "=2.0.0-rc.11"
 optional = true
 default-features = false
-features = ["std", "ndarray", "download-binaries", "copy-dylibs", "tracing", "api-24", "tls-rustls", "cuda", "directml"]
+features = ["std", "ndarray", "download-binaries", "copy-dylibs", "tracing", "tls-rustls", "cuda", "directml"]
 
 [target.'cfg(target_os = "macos")'.dependencies.ort]
-version = "2.0.0-rc.12"
+version = "=2.0.0-rc.11"
 optional = true
 default-features = false
-features = ["std", "ndarray", "download-binaries", "copy-dylibs", "tracing", "api-24", "tls-rustls", "coreml"]
+features = ["std", "ndarray", "download-binaries", "copy-dylibs", "tracing", "tls-rustls", "coreml"]

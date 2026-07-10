@@ -32,9 +32,11 @@ jobs:
           - rust_target: aarch64-apple-darwin
             expected_arch: arm64
             artifact_label: macOS-arm64
+            tauri_config: src-tauri/tauri.pro.macos.conf.json
           - rust_target: x86_64-apple-darwin
             expected_arch: x86_64
             artifact_label: macOS-x64
+            tauri_config: src-tauri/tauri.pro.macos.x64.conf.json
     env:
       CI: true
       APPLE_SIGNING_IDENTITY: "-"
@@ -62,6 +64,37 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Prepare official Intel ONNX Runtime
+        if: matrix.rust_target == 'x86_64-apple-darwin'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          manifest="src-tauri/vendor/onnxruntime/onnxruntime-1.23.2-macos-x64.json"
+          version="$(node -e 'const fs=require("node:fs"); const m=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); process.stdout.write(m.version)' "${manifest}")"
+          source_url="$(node -e 'const fs=require("node:fs"); const m=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); process.stdout.write(m.sourceUrl)' "${manifest}")"
+          expected_sha="$(node -e 'const fs=require("node:fs"); const m=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); process.stdout.write(m.sha256)' "${manifest}")"
+          dylib_name="$(node -e 'const fs=require("node:fs"); const m=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); process.stdout.write(m.dylib)' "${manifest}")"
+          archive="${RUNNER_TEMP}/onnxruntime-osx-x86_64-${version}.tgz"
+          extract_dir="${RUNNER_TEMP}/onnxruntime-osx-x86_64"
+          runtime_root="${extract_dir}/onnxruntime-osx-x86_64-${version}"
+          stage_dir="src-tauri/vendor/onnxruntime/macos-x64"
+
+          curl --fail --location --retry 3 --output "${archive}" "${source_url}"
+          echo "${expected_sha}  ${archive}" | /usr/bin/shasum -a 256 --check
+          mkdir -p "${extract_dir}" "${stage_dir}"
+          tar -xzf "${archive}" -C "${extract_dir}"
+
+          test -f "${runtime_root}/lib/${dylib_name}"
+          cp -L "${runtime_root}/lib/${dylib_name}" "${stage_dir}/${dylib_name}"
+          cp "${runtime_root}/LICENSE" "${stage_dir}/LICENSE"
+          cp "${runtime_root}/ThirdPartyNotices.txt" "${stage_dir}/ThirdPartyNotices.txt"
+          cp "${runtime_root}/VERSION_NUMBER" "${stage_dir}/VERSION_NUMBER"
+
+          echo "ORT_LIB_LOCATION=${runtime_root}/lib" >> "${GITHUB_ENV}"
+          echo "ORT_PREFER_DYNAMIC_LINK=1" >> "${GITHUB_ENV}"
+          echo 'CARGO_TARGET_X86_64_APPLE_DARWIN_RUSTFLAGS=-C link-arg=-Wl,-rpath,@executable_path/../Frameworks' >> "${GITHUB_ENV}"
+
       - name: Validate Pro package inputs
         shell: bash
         run: |
@@ -69,18 +102,24 @@ jobs:
           /bin/zsh -n tools/macos/FrameCull-Pro-First-Launch.command
           node -e '
             const fs = require("node:fs");
-            const config = JSON.parse(fs.readFileSync("src-tauri/tauri.pro.macos.conf.json", "utf8"));
-            if (config.productName !== "FrameCull AI Pro") throw new Error("wrong Pro productName");
-            if (config.identifier !== "com.framecull.ai.pro") throw new Error("wrong Pro identifier");
-            const resources = config.bundle?.resources ?? {};
             const model = "pro-models/semantic_student_v2_grounded_convnext_v14_five_mountain_region/model.int8.onnx";
             const manifest = "pro-models/semantic_student_v2_grounded_convnext_v14_five_mountain_region/manifest.int8.json";
-            if (resources[model] !== model || resources[manifest] !== manifest) throw new Error("Pro model resources missing");
-            if (Object.keys(resources).some(path => /windows-x64|RawTherapee_5\.12_win64/i.test(path))) throw new Error("Windows RawTherapee leaked into macOS config");
+            for (const path of ["src-tauri/tauri.pro.macos.conf.json", "src-tauri/tauri.pro.macos.x64.conf.json"]) {
+              const config = JSON.parse(fs.readFileSync(path, "utf8"));
+              if (config.productName !== "FrameCull AI Pro") throw new Error(`${path}: wrong Pro productName`);
+              if (config.identifier !== "com.framecull.ai.pro") throw new Error(`${path}: wrong Pro identifier`);
+              const resources = config.bundle?.resources ?? {};
+              if (resources[model] !== model || resources[manifest] !== manifest) throw new Error(`${path}: Pro model resources missing`);
+              if (Object.keys(resources).some(resource => /windows-x64|RawTherapee_5\.12_win64/i.test(resource))) throw new Error(`${path}: Windows RawTherapee leaked into macOS config`);
+            }
           '
 
+          if [[ "${{ matrix.rust_target }}" == "x86_64-apple-darwin" ]]; then
+            test -f src-tauri/vendor/onnxruntime/macos-x64/libonnxruntime.1.23.2.dylib
+          fi
+
       - name: Build Tauri Pro app
-        run: pnpm exec tauri build --features pro --config src-tauri/tauri.pro.macos.conf.json --target "${{ matrix.rust_target }}"
+        run: pnpm exec tauri build --features pro --config "${{ matrix.tauri_config }}" --target "${{ matrix.rust_target }}"
 
       - name: Stage and verify Pro tester package
         id: stage
@@ -122,6 +161,15 @@ jobs:
           /usr/bin/codesign --verify --deep --strict --verbose=2 "${app_path}"
           /usr/bin/codesign -dvv "${app_path}"
           /usr/bin/otool -L "${app_binary}"
+
+          if [[ "${RUST_TARGET}" == "x86_64-apple-darwin" ]]; then
+            ort_dylib="${app_path}/Contents/Frameworks/libonnxruntime.1.23.2.dylib"
+            test -f "${ort_dylib}"
+            test "$(/usr/bin/lipo -archs "${ort_dylib}")" = "x86_64"
+            /usr/bin/codesign --verify --strict --verbose=2 "${ort_dylib}"
+            /usr/bin/otool -L "${app_binary}" | grep -F 'libonnxruntime.1.23.2.dylib'
+            /usr/bin/otool -l "${app_binary}" | grep -F '@executable_path/../Frameworks'
+          fi
 
           stage_dir="${RUNNER_TEMP}/FrameCull-Pro-${ARTIFACT_LABEL}"
           archive_path="${GITHUB_WORKSPACE}/FrameCull-Pro-${ARTIFACT_LABEL}.zip"
