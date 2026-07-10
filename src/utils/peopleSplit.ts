@@ -1,11 +1,15 @@
 import type { PeopleFaceBox, PersonCluster, PersonFaceEmbedding } from '../types';
 
-export const PEOPLE_SPLIT_MODEL_VERSION = 'people-split-v2-face-content-filter';
-export const PEOPLE_CLUSTER_THRESHOLD = 0.42;
-export const PEOPLE_CLUSTER_SECONDARY_THRESHOLD = 0.46;
+export const PEOPLE_SPLIT_MODEL_VERSION = 'people-split-v3-sface-rgb';
+export const PEOPLE_CLUSTER_THRESHOLD = 0.32;
+export const PEOPLE_CLUSTER_SECONDARY_THRESHOLD = 0.32;
 const PEOPLE_CLUSTER_MIN_QUALITY = 0.48;
 const PEOPLE_CLUSTER_MIN_SINGLE_QUALITY = 0.70;
-const PEOPLE_CLUSTER_POST_MERGE_THRESHOLD = 0.50;
+const PEOPLE_CLUSTER_AMBIGUITY_MARGIN = 0.05;
+const PEOPLE_CLUSTER_SEED_THRESHOLD = 0.26;
+const PEOPLE_CLUSTER_STRONG_PAIR_THRESHOLD = 0.26;
+const PEOPLE_CLUSTER_SUPPORT_THRESHOLD = 0.32;
+const PEOPLE_CLUSTER_POST_MERGE_THRESHOLD = 0.32;
 
 export interface ClusterPeopleOptions {
   threshold?: number;
@@ -59,6 +63,7 @@ export function clusterPeopleFaces(
   const unassignedFaces = reviewedFaces.filter(face => (
     !face.eligibleForCluster || face.quality < minQuality || face.embedding.length === 0
   ));
+  const ambiguousFaces: PersonFaceEmbedding[] = [];
   const groups: Array<{
     id: string;
     centroid: number[];
@@ -70,6 +75,8 @@ export function clusterPeopleFaces(
   eligibleFaces.forEach(face => {
     let bestIndex = -1;
     let bestDistance = Number.POSITIVE_INFINITY;
+    let bestThreshold = threshold;
+    let secondBestDistance = Number.POSITIVE_INFINITY;
 
     // Check every current group, but keep photo membership indexed so large sets
     // do not spend most of their time scanning group members repeatedly.
@@ -78,13 +85,30 @@ export function clusterPeopleFaces(
       if (group.photoIds.has(face.photoId)) continue;
       const distance = cosineDistance(face.embedding, group.centroid);
       const thresholdForGroup = mergeThresholdFor(face, group.faces, threshold);
-      if (distance <= thresholdForGroup && distance < bestDistance) {
+      if (distance < bestDistance) {
+        secondBestDistance = bestDistance;
         bestDistance = distance;
         bestIndex = index;
+        bestThreshold = thresholdForGroup;
+      } else if (distance < secondBestDistance) {
+        secondBestDistance = distance;
       }
     }
 
-    if (bestIndex >= 0) {
+    const isAmbiguous = bestDistance <= bestThreshold
+      && hasRepresentativeSupport(face, groups[bestIndex]?.faces ?? [])
+      && secondBestDistance - bestDistance < PEOPLE_CLUSTER_AMBIGUITY_MARGIN;
+    if (isAmbiguous) {
+      ambiguousFaces.push({
+        ...face,
+        eligibleForCluster: false,
+        reason: face.reason ?? 'Identity match is ambiguous between multiple people',
+      });
+    } else if (
+      bestIndex >= 0
+      && bestDistance <= bestThreshold
+      && hasRepresentativeSupport(face, groups[bestIndex].faces)
+    ) {
       const group = groups[bestIndex];
       group.faces.push(face);
       group.photoIds.add(face.photoId);
@@ -113,12 +137,12 @@ export function clusterPeopleFaces(
     .map(cluster => enforceClusterPhotoUniqueness(cluster, eligibleFaces))
     .map(cluster => rebuildCluster(cluster, eligibleFaces, cluster.status))
     .filter(cluster => cluster.faceCount > 0);
-  const mergedClusters = postMergeSimilarClusters(preliminaryClusters, eligibleFaces, threshold);
+  const mergedClusters = postMergeSimilarClusters(preliminaryClusters, eligibleFaces);
   const { clusters, rejectedFaces } = filterWeakAutoClusters(mergedClusters, reviewedFaceByKey);
 
   return {
     clusters: dedupeClusterFaceMembership(clusters, eligibleFaces),
-    unassignedFaces: dedupeFaces([...unassignedFaces, ...rejectedFaces]),
+    unassignedFaces: dedupeFaces([...unassignedFaces, ...ambiguousFaces, ...rejectedFaces]),
     faces: reviewedFaces,
   };
 }
@@ -294,21 +318,32 @@ function weightedCentroid(faces: PersonFaceEmbedding[]) {
 function mergeThresholdFor(face: PersonFaceEmbedding, groupFaces: PersonFaceEmbedding[], threshold: number) {
   const hasFallback = face.source === 'FALLBACK' || groupFaces.some(groupFace => groupFace.source === 'FALLBACK');
   if (hasFallback) return Math.min(threshold, 0.18);
-  if (groupFaces.length <= 1) return threshold;
+  if (groupFaces.length <= 1) return Math.min(threshold, PEOPLE_CLUSTER_SEED_THRESHOLD);
   return Math.min(threshold, PEOPLE_CLUSTER_SECONDARY_THRESHOLD);
+}
+
+function hasRepresentativeSupport(face: PersonFaceEmbedding, groupFaces: PersonFaceEmbedding[]) {
+  if (groupFaces.length <= 1) return true;
+  const requiredSupport = Math.min(2, groupFaces.length);
+  let support = 0;
+  for (const groupFace of groupFaces) {
+    if (cosineDistance(face.embedding, groupFace.embedding) > PEOPLE_CLUSTER_SUPPORT_THRESHOLD) continue;
+    support += 1;
+    if (support >= requiredSupport) return true;
+  }
+  return false;
 }
 
 function postMergeSimilarClusters(
   clusters: PersonCluster[],
   faces: PersonFaceEmbedding[],
-  baseThreshold: number,
 ) {
   const faceMap = new Map(faces.map(face => [face.key, face]));
   let next = clusters.map(cluster => rebuildCluster(cluster, faces, cluster.status));
   let changed = true;
   let pass = 0;
   const maxPasses = Math.min(12, Math.max(1, Math.ceil(Math.log2(next.length + 1)) + 4));
-  const mergeThreshold = Math.max(baseThreshold, PEOPLE_CLUSTER_POST_MERGE_THRESHOLD);
+  const mergeThreshold = PEOPLE_CLUSTER_POST_MERGE_THRESHOLD;
 
   while (changed && pass < maxPasses) {
     changed = false;
@@ -379,6 +414,7 @@ function filterWeakAutoClusters(
     const hasGuidance = memberFaces.some(face => face.landmarkerStatus !== undefined || typeof face.landmarkerOverlap === 'number');
     const manualCluster = cluster.status !== 'AUTO';
     const multiSampleCluster = cluster.faceCount >= 2
+      && hasAutomaticClusterIdentitySupport(memberFaces)
       && stableFaceCount >= Math.min(2, cluster.faceCount)
       && bestQuality >= 0.68
       && bestVisualQuality >= 0.38
@@ -424,6 +460,23 @@ function hasPeopleFaceConfirmation(face: PersonFaceEmbedding) {
   return face.landmarkerStatus === 'OK' && (face.landmarkerOverlap ?? 0) >= 0.08;
 }
 
+function hasAutomaticClusterIdentitySupport(faces: PersonFaceEmbedding[]) {
+  if (faces.length <= 1) return true;
+  if (faces.length === 2) {
+    return cosineDistance(faces[0].embedding, faces[1].embedding) <= PEOPLE_CLUSTER_STRONG_PAIR_THRESHOLD;
+  }
+  return faces.every((face, faceIndex) => {
+    let support = 0;
+    for (let otherIndex = 0; otherIndex < faces.length; otherIndex += 1) {
+      if (otherIndex === faceIndex) continue;
+      if (cosineDistance(face.embedding, faces[otherIndex].embedding) > PEOPLE_CLUSTER_SUPPORT_THRESHOLD) continue;
+      support += 1;
+      if (support >= 2) return true;
+    }
+    return false;
+  });
+}
+
 function canMergeClusters(left: PersonCluster, right: PersonCluster) {
   const leftPhotos = new Set(left.photoIds);
   return !right.photoIds.some(photoId => leftPhotos.has(photoId));
@@ -446,22 +499,32 @@ function clusterDistance(
   const leftCentroid = weightedCentroid(leftFaces);
   const rightCentroid = weightedCentroid(rightFaces);
   const centroidDistance = cosineDistance(leftCentroid, rightCentroid);
-  if (centroidDistance <= mergeThreshold) return centroidDistance;
-  if (centroidDistance > mergeThreshold + 0.18) return centroidDistance;
+  if (centroidDistance > mergeThreshold) return Number.POSITIVE_INFINITY;
 
-  // Sample representative faces only when centroids are close enough to need a
-  // second opinion. Member keys are quality-sorted by buildClusterFromFaces.
-  const maxSampleSize = 20;
-  const leftSample = leftFaces.slice(0, maxSampleSize);
-  const rightSample = rightFaces.slice(0, maxSampleSize);
+  if (leftFaces.length === 1 && rightFaces.length === 1) {
+    return cosineDistance(leftFaces[0].embedding, rightFaces[0].embedding) <= PEOPLE_CLUSTER_STRONG_PAIR_THRESHOLD
+      ? centroidDistance
+      : Number.POSITIVE_INFINITY;
+  }
 
-  let bestPairDistance = Number.POSITIVE_INFINITY;
-  leftSample.forEach(leftFace => {
-    rightSample.forEach(rightFace => {
-      bestPairDistance = Math.min(bestPairDistance, cosineDistance(leftFace.embedding, rightFace.embedding));
-    });
-  });
-  return Math.min(centroidDistance, bestPairDistance + 0.04);
+  const leftSupport = countSupportedRepresentatives(leftFaces, rightFaces);
+  const rightSupport = countSupportedRepresentatives(rightFaces, leftFaces);
+  const requiredLeftSupport = Math.min(2, leftFaces.length);
+  const requiredRightSupport = Math.min(2, rightFaces.length);
+  return leftSupport >= requiredLeftSupport && rightSupport >= requiredRightSupport
+    ? centroidDistance
+    : Number.POSITIVE_INFINITY;
+}
+
+function countSupportedRepresentatives(
+  sourceFaces: PersonFaceEmbedding[],
+  targetFaces: PersonFaceEmbedding[],
+) {
+  return sourceFaces.reduce((support, sourceFace) => (
+    support + (targetFaces.some(targetFace => (
+      cosineDistance(sourceFace.embedding, targetFace.embedding) <= PEOPLE_CLUSTER_SUPPORT_THRESHOLD
+    )) ? 1 : 0)
+  ), 0);
 }
 
 function dedupeFaces(faces: PersonFaceEmbedding[]) {

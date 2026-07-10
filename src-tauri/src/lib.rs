@@ -144,6 +144,7 @@ pub struct RawMonitorCacheEntry {
     pub from_cache: bool,
     pub fallback: Option<bool>,
     pub cache_source: Option<String>,
+    pub fallback_reason: Option<String>,
     pub recent_failure: Option<bool>,
     pub missing_reason: Option<String>,
 }
@@ -161,6 +162,7 @@ pub struct RawMonitorCacheEvent {
     pub cache_path: Option<String>,
     pub fallback: Option<bool>,
     pub cache_source: Option<String>,
+    pub fallback_reason: Option<String>,
     pub skipped_reason: Option<String>,
     pub engine_version: Option<String>,
     pub errors: Option<Vec<String>>,
@@ -173,6 +175,10 @@ pub struct RawMonitorCacheEvent {
 struct RawMonitorCacheMetadata {
     cache_source: String,
     fallback: bool,
+    #[serde(default)]
+    fallback_reason: Option<String>,
+    #[serde(default)]
+    renderer_version: u32,
     profile_id: String,
     written_at_ms: u64,
 }
@@ -190,6 +196,7 @@ struct RawMonitorFailureRecord {
 struct RawMonitorCacheStatus {
     source: String,
     fallback: bool,
+    fallback_reason: Option<String>,
 }
 
 #[cfg(feature = "pro")]
@@ -439,6 +446,8 @@ const JPEG_THUMBNAIL_CACHE_VERSION: &str = "v1";
 #[cfg(feature = "pro")]
 const RAW_MONITOR_CACHE_VERSION: &str = "v5";
 #[cfg(feature = "pro")]
+const RAW_MONITOR_RENDERER_VERSION: u32 = 1;
+#[cfg(feature = "pro")]
 const RAW_MONITOR_PROFILE_BALANCED: &str = "FrameCull_Monitor_Balanced_v1";
 #[cfg(feature = "pro")]
 const RAW_MONITOR_PROFILE_AUTO_EXPOSURE: &str = "FrameCull_Monitor_AutoExposure_v1";
@@ -452,6 +461,14 @@ const RAW_MONITOR_MAX_PARALLELISM: usize = 3;
 const RAW_MONITOR_MAX_LUT_BYTES: u64 = 16 * 1024 * 1024;
 #[cfg(feature = "pro")]
 const RAW_MONITOR_FAILURE_RETRY_COOLDOWN_SECS: u64 = 30 * 60;
+#[cfg(feature = "pro")]
+const RAW_MONITOR_FALLBACK_DECODE_FAILURE: &str = "decodeFailure";
+#[cfg(feature = "pro")]
+const RAW_MONITOR_FALLBACK_ENGINE_ERROR: &str = "engineError";
+#[cfg(feature = "pro")]
+const RAW_MONITOR_FALLBACK_MISSING_OUTPUT: &str = "missingOutput";
+#[cfg(feature = "pro")]
+const RAW_MONITOR_FALLBACK_INVALID_OUTPUT: &str = "invalidOutput";
 #[cfg(feature = "pro")]
 const RAWTHERAPEE_BUNDLED_VERSION: &str = "5.12";
 #[cfg(feature = "pro")]
@@ -1872,10 +1889,13 @@ fn write_raw_monitor_cache_metadata(
     profile_id: &str,
     source: &str,
     fallback: bool,
+    fallback_reason: Option<&str>,
 ) -> Result<(), String> {
     let metadata = RawMonitorCacheMetadata {
         cache_source: source.to_string(),
         fallback,
+        fallback_reason: fallback_reason.map(str::to_string),
+        renderer_version: RAW_MONITOR_RENDERER_VERSION,
         profile_id: normalize_raw_monitor_profile_id(profile_id).to_string(),
         written_at_ms: now_ms(),
     };
@@ -1896,12 +1916,36 @@ fn raw_monitor_cache_status(cache_path: &Path) -> RawMonitorCacheStatus {
         return RawMonitorCacheStatus {
             source: metadata.cache_source,
             fallback: metadata.fallback,
+            fallback_reason: metadata.fallback_reason,
         };
     }
     RawMonitorCacheStatus {
         source: "rawtherapee".to_string(),
         fallback: false,
+        fallback_reason: None,
     }
+}
+
+#[cfg(feature = "pro")]
+fn raw_monitor_cache_is_reusable(raw_path: &Path, cache_path: &Path) -> bool {
+    if validate_raw_monitor_cache_jpeg(cache_path).is_err() {
+        return false;
+    }
+    if !is_nikon_raw_path(raw_path) {
+        return true;
+    }
+    let Some(metadata) = read_raw_monitor_cache_metadata(cache_path) else {
+        return false;
+    };
+    metadata.fallback
+        || metadata.cache_source != "rawtherapee"
+        || metadata.renderer_version >= RAW_MONITOR_RENDERER_VERSION
+}
+
+#[cfg(feature = "pro")]
+fn remove_raw_monitor_cache_artifacts(cache_path: &Path) {
+    let _ = fs::remove_file(cache_path);
+    let _ = fs::remove_file(raw_monitor_cache_metadata_path(cache_path));
 }
 
 #[cfg(feature = "pro")]
@@ -1941,11 +1985,12 @@ fn write_raw_monitor_failure_table(
 
 #[cfg(feature = "pro")]
 fn raw_monitor_failure_key(cache_path: &Path) -> String {
-    cache_path
+    let cache_key = cache_path
         .file_stem()
         .and_then(|value| value.to_str())
         .map(|value| value.to_string())
-        .unwrap_or_else(|| cache_path.display().to_string())
+        .unwrap_or_else(|| cache_path.display().to_string());
+    format!("r{}-{}", RAW_MONITOR_RENDERER_VERSION, cache_key)
 }
 
 #[cfg(feature = "pro")]
@@ -3604,6 +3649,7 @@ fn raw_monitor_event(
         cache_path,
         fallback: None,
         cache_source: None,
+        fallback_reason: None,
         skipped_reason: None,
         engine_version,
         errors,
@@ -3864,14 +3910,14 @@ fn render_raw_monitor_cache_file(
             .map_err(|e| format!("Failed to create RAW monitor cache directory: {}", e))?;
     }
 
-    if cache_path.exists() && validate_raw_monitor_cache_jpeg(cache_path).is_ok() {
+    if cache_path.exists() && raw_monitor_cache_is_reusable(raw_path, cache_path) {
         return Ok(RawMonitorRenderResult {
             cache_path: cache_path.to_path_buf(),
             status: raw_monitor_cache_status(cache_path),
         });
     }
     if cache_path.exists() {
-        let _ = fs::remove_file(cache_path);
+        remove_raw_monitor_cache_artifacts(cache_path);
     }
 
     let mut command = rawtherapee_command(engine_path);
@@ -3890,7 +3936,12 @@ fn render_raw_monitor_cache_file(
     let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
     if !output.status.success() {
         let detail = if !stderr.is_empty() { stderr } else { stdout };
-        return write_raw_monitor_embedded_preview_cache(raw_path, cache_path, profile_id).map(
+        return write_raw_monitor_embedded_preview_cache(
+            raw_path,
+            cache_path,
+            profile_id,
+            RAW_MONITOR_FALLBACK_ENGINE_ERROR,
+        ).map(
             |status| RawMonitorRenderResult {
                 cache_path: cache_path.to_path_buf(),
                 status,
@@ -3911,13 +3962,18 @@ fn render_raw_monitor_cache_file(
     }
 
     if rawtherapee_reported_decode_failure(&stderr) {
-        let _ = fs::remove_file(cache_path);
+        remove_raw_monitor_cache_artifacts(cache_path);
         let detail = if stderr.is_empty() {
             "RawTherapee reported a RAW decode failure".to_string()
         } else {
             stderr
         };
-        return write_raw_monitor_embedded_preview_cache(raw_path, cache_path, profile_id).map(
+        return write_raw_monitor_embedded_preview_cache(
+            raw_path,
+            cache_path,
+            profile_id,
+            RAW_MONITOR_FALLBACK_DECODE_FAILURE,
+        ).map(
             |status| RawMonitorRenderResult {
                 cache_path: cache_path.to_path_buf(),
                 status,
@@ -3933,7 +3989,12 @@ fn render_raw_monitor_cache_file(
     }
 
     if !cache_path.is_file() {
-        return write_raw_monitor_embedded_preview_cache(raw_path, cache_path, profile_id).map(
+        return write_raw_monitor_embedded_preview_cache(
+            raw_path,
+            cache_path,
+            profile_id,
+            RAW_MONITOR_FALLBACK_MISSING_OUTPUT,
+        ).map(
             |status| RawMonitorRenderResult {
                 cache_path: cache_path.to_path_buf(),
                 status,
@@ -3948,17 +4009,29 @@ fn render_raw_monitor_cache_file(
         );
     }
     validate_raw_monitor_cache_jpeg(cache_path).map(|_| {
-        let _ = write_raw_monitor_cache_metadata(cache_path, profile_id, "rawtherapee", false);
+        let _ = write_raw_monitor_cache_metadata(
+            cache_path,
+            profile_id,
+            "rawtherapee",
+            false,
+            None,
+        );
         RawMonitorRenderResult {
             cache_path: cache_path.to_path_buf(),
             status: RawMonitorCacheStatus {
                 source: "rawtherapee".to_string(),
                 fallback: false,
+                fallback_reason: None,
             },
         }
     }).or_else(|error| {
-        let _ = fs::remove_file(cache_path);
-        write_raw_monitor_embedded_preview_cache(raw_path, cache_path, profile_id).map(
+        remove_raw_monitor_cache_artifacts(cache_path);
+        write_raw_monitor_embedded_preview_cache(
+            raw_path,
+            cache_path,
+            profile_id,
+            RAW_MONITOR_FALLBACK_INVALID_OUTPUT,
+        ).map(
             |status| RawMonitorRenderResult {
                 cache_path: cache_path.to_path_buf(),
                 status,
@@ -3977,6 +4050,7 @@ fn write_raw_monitor_embedded_preview_cache(
     raw_path: &Path,
     cache_path: &Path,
     profile_id: &str,
+    fallback_reason: &str,
 ) -> Result<RawMonitorCacheStatus, String> {
     let orientation = read_orientation(raw_path);
     let bytes = fs::read(raw_path)
@@ -4005,10 +4079,17 @@ fn write_raw_monitor_embedded_preview_cache(
         .encode_image(&resized)
         .map_err(|e| format!("Failed to write embedded preview cache JPEG: {}", e))?;
     validate_raw_monitor_cache_jpeg(cache_path)?;
-    write_raw_monitor_cache_metadata(cache_path, profile_id, "embeddedFallback", true)?;
+    write_raw_monitor_cache_metadata(
+        cache_path,
+        profile_id,
+        "embeddedFallback",
+        true,
+        Some(fallback_reason),
+    )?;
     Ok(RawMonitorCacheStatus {
         source: "embeddedFallback".to_string(),
         fallback: true,
+        fallback_reason: Some(fallback_reason.to_string()),
     })
 }
 
@@ -4152,7 +4233,7 @@ fn run_raw_monitor_cache_stream(
             match raw_monitor_cache_path(&app, &raw_path, &engine_version, &profile_id) {
                 Ok(cache_path) => {
                     let failure_key = raw_monitor_failure_key(&cache_path);
-                    if cache_path.is_file() && validate_raw_monitor_cache_jpeg(&cache_path).is_ok() {
+                    if cache_path.is_file() && raw_monitor_cache_is_reusable(&raw_path, &cache_path) {
                         let status = raw_monitor_cache_status(&cache_path);
                         if is_nikon_raw_path(&raw_path) {
                             let mut table = failure_table.lock().unwrap();
@@ -4174,6 +4255,7 @@ fn run_raw_monitor_cache_stream(
                         );
                         event.cache_source = Some(status.source);
                         event.fallback = Some(status.fallback);
+                        event.fallback_reason = status.fallback_reason;
                         send_raw_monitor_event(&on_event, event);
                         return;
                     }
@@ -4244,6 +4326,7 @@ fn run_raw_monitor_cache_stream(
                             );
                             event.cache_source = Some(result.status.source);
                             event.fallback = Some(result.status.fallback);
+                            event.fallback_reason = result.status.fallback_reason;
                             send_raw_monitor_event(&on_event, event);
                         }
                         Err(error) => {
@@ -4415,13 +4498,14 @@ async fn get_raw_monitor_cache_entry(
                 from_cache: false,
                 fallback: None,
                 cache_source: None,
+                fallback_reason: None,
                 recent_failure: None,
                 missing_reason: Some("Path is not a supported RAW file".to_string()),
             });
         }
         let cache_path =
             raw_monitor_cache_path(&app, &path, &engine_version, &normalized_profile_id)?;
-        if cache_path.is_file() && validate_raw_monitor_cache_jpeg(&cache_path).is_ok() {
+        if cache_path.is_file() && raw_monitor_cache_is_reusable(&path, &cache_path) {
             let status = raw_monitor_cache_status(&cache_path);
             Ok(RawMonitorCacheEntry {
                 raw_path,
@@ -4430,6 +4514,7 @@ async fn get_raw_monitor_cache_entry(
                 from_cache: true,
                 fallback: Some(status.fallback),
                 cache_source: Some(status.source),
+                fallback_reason: status.fallback_reason,
                 recent_failure: None,
                 missing_reason: None,
             })
@@ -4449,6 +4534,7 @@ async fn get_raw_monitor_cache_entry(
                 from_cache: false,
                 fallback: None,
                 cache_source: None,
+                fallback_reason: None,
                 recent_failure: Some(recent_failure),
                 missing_reason: Some(if recent_failure {
                     "Recent NEF RAW monitor failure is cooling down".to_string()
@@ -6466,12 +6552,65 @@ mod tests {
             RAW_MONITOR_PROFILE_AUTO_EXPOSURE,
             "embeddedFallback",
             true,
+            Some(RAW_MONITOR_FALLBACK_DECODE_FAILURE),
         )
         .unwrap();
 
         let status = raw_monitor_cache_status(&cache);
         assert_eq!(status.source, "embeddedFallback");
         assert!(status.fallback);
+        assert_eq!(
+            status.fallback_reason.as_deref(),
+            Some(RAW_MONITOR_FALLBACK_DECODE_FAILURE)
+        );
+
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[cfg(feature = "pro")]
+    #[test]
+    fn raw_monitor_legacy_nikon_rawtherapee_cache_is_not_reusable() {
+        let dir = temp_test_dir("raw-monitor-legacy-nef-cache");
+        let raw = dir.join("source.NEF");
+        let cache = dir.join("cache.jpg");
+        fs::write(&raw, b"nikon raw").unwrap();
+        fs::write(&cache, test_jpeg_bytes(64, 48)).unwrap();
+        fs::write(
+            raw_monitor_cache_metadata_path(&cache),
+            br#"{
+  "cacheSource": "rawtherapee",
+  "fallback": false,
+  "profileId": "FrameCull_Monitor_Balanced_v1",
+  "writtenAtMs": 1
+}"#,
+        )
+        .unwrap();
+
+        assert!(!raw_monitor_cache_is_reusable(&raw, &cache));
+
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[cfg(feature = "pro")]
+    #[test]
+    fn raw_monitor_legacy_non_nikon_cache_remains_reusable() {
+        let dir = temp_test_dir("raw-monitor-legacy-cr3-cache");
+        let raw = dir.join("source.CR3");
+        let cache = dir.join("cache.jpg");
+        fs::write(&raw, b"canon raw").unwrap();
+        fs::write(&cache, test_jpeg_bytes(64, 48)).unwrap();
+        fs::write(
+            raw_monitor_cache_metadata_path(&cache),
+            br#"{
+  "cacheSource": "rawtherapee",
+  "fallback": false,
+  "profileId": "FrameCull_Monitor_Balanced_v1",
+  "writtenAtMs": 1
+}"#,
+        )
+        .unwrap();
+
+        assert!(raw_monitor_cache_is_reusable(&raw, &cache));
 
         fs::remove_dir_all(dir).unwrap();
     }
@@ -6540,12 +6679,20 @@ mod tests {
     }
 
     #[cfg(all(feature = "pro", target_os = "windows"))]
-    fn fake_rawtherapee_cli(dir: &Path, writes_valid_jpeg: bool) -> PathBuf {
+    #[derive(Clone, Copy)]
+    enum FakeRawTherapeeMode {
+        Valid,
+        Invalid,
+        DecodeWarning,
+    }
+
+    #[cfg(all(feature = "pro", target_os = "windows"))]
+    fn fake_rawtherapee_cli(dir: &Path, mode: FakeRawTherapeeMode) -> PathBuf {
         use base64::Engine as _;
 
         let cli_path = dir.join("rawtherapee-cli.cmd");
         let ps_path = dir.join("fake-rawtherapee.ps1");
-        let output_command = if writes_valid_jpeg {
+        let output_command = if matches!(mode, FakeRawTherapeeMode::Valid | FakeRawTherapeeMode::DecodeWarning) {
             let jpeg_b64 =
                 base64::engine::general_purpose::STANDARD.encode(test_jpeg_bytes(64, 48));
             format!(
@@ -6554,6 +6701,11 @@ mod tests {
             )
         } else {
             "Set-Content -LiteralPath $out -Value 'not-a-jpeg'\r\n".to_string()
+        };
+        let warning_command = if matches!(mode, FakeRawTherapeeMode::DecodeWarning) {
+            "[Console]::Error.WriteLine('unknown file: data corrupted at 5014531')\r\n"
+        } else {
+            ""
         };
         let ps_script = format!(
             r#"$rest = $args
@@ -6582,10 +6734,11 @@ if (-not $quality) {{ exit 8 }}
 if (-not $overwrite) {{ exit 9 }}
 if (-not (Test-Path -LiteralPath $pp3)) {{ exit 10 }}
 if (-not (Test-Path -LiteralPath $raw)) {{ exit 11 }}
-{output_command}exit $LASTEXITCODE
+{output_command}{warning_command}exit $LASTEXITCODE
 "#,
             quality = RAW_MONITOR_JPEG_QUALITY,
-            output_command = output_command
+            output_command = output_command,
+            warning_command = warning_command,
         );
         fs::write(&ps_path, ps_script).unwrap();
         fs::write(
@@ -6600,7 +6753,7 @@ if (-not (Test-Path -LiteralPath $raw)) {{ exit 11 }}
     #[test]
     fn raw_monitor_render_invokes_cli_and_writes_valid_jpeg() {
         let dir = temp_test_dir("raw-monitor-render");
-        let engine = fake_rawtherapee_cli(&dir, true);
+        let engine = fake_rawtherapee_cli(&dir, FakeRawTherapeeMode::Valid);
         let raw = dir.join("source.CR2");
         let pp3 = dir.join("FrameCull_Monitor_v1.pp3");
         let cache = dir.join("cache.jpg");
@@ -6620,7 +6773,7 @@ if (-not (Test-Path -LiteralPath $raw)) {{ exit 11 }}
     #[test]
     fn raw_monitor_render_rejects_unreadable_cli_output() {
         let dir = temp_test_dir("raw-monitor-bad-output");
-        let engine = fake_rawtherapee_cli(&dir, false);
+        let engine = fake_rawtherapee_cli(&dir, FakeRawTherapeeMode::Invalid);
         let raw = dir.join("source.CR2");
         let pp3 = dir.join("FrameCull_Monitor_v1.pp3");
         let cache = dir.join("cache.jpg");
@@ -6645,7 +6798,7 @@ if (-not (Test-Path -LiteralPath $raw)) {{ exit 11 }}
     #[test]
     fn raw_monitor_render_falls_back_to_embedded_preview_when_cli_output_is_bad() {
         let dir = temp_test_dir("raw-monitor-embedded-fallback");
-        let engine = fake_rawtherapee_cli(&dir, false);
+        let engine = fake_rawtherapee_cli(&dir, FakeRawTherapeeMode::Invalid);
         let raw = dir.join("source.NEF");
         let pp3 = dir.join("FrameCull_Monitor_v1.pp3");
         let cache = dir.join("cache.jpg");
@@ -6669,6 +6822,42 @@ if (-not (Test-Path -LiteralPath $raw)) {{ exit 11 }}
         assert!(image::open(&cache).is_ok());
         assert!(result.status.fallback);
         assert_eq!(result.status.source, "embeddedFallback");
+
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[cfg(all(feature = "pro", target_os = "windows"))]
+    #[test]
+    fn raw_monitor_decode_warning_replaces_valid_but_corrupt_output() {
+        let dir = temp_test_dir("raw-monitor-decode-warning-fallback");
+        let engine = fake_rawtherapee_cli(&dir, FakeRawTherapeeMode::DecodeWarning);
+        let raw = dir.join("source.NEF");
+        let pp3 = dir.join("FrameCull_Monitor_v1.pp3");
+        let cache = dir.join("cache.jpg");
+        let preview = test_jpeg_bytes(640, 480);
+        let mut raw_bytes = b"nikon raw header".to_vec();
+        raw_bytes.extend_from_slice(&preview);
+        raw_bytes.extend_from_slice(b"nikon raw footer");
+        fs::write(&raw, raw_bytes).unwrap();
+        fs::write(&pp3, raw_monitor_pp3_content(RAW_MONITOR_PROFILE_BALANCED)).unwrap();
+
+        let result = render_raw_monitor_cache_file(
+            &engine,
+            &pp3,
+            &raw,
+            &cache,
+            RAW_MONITOR_PROFILE_BALANCED,
+        )
+        .unwrap();
+
+        let rendered = image::open(&cache).unwrap();
+        assert_eq!(rendered.dimensions(), (640, 480));
+        assert!(result.status.fallback);
+        assert_eq!(result.status.source, "embeddedFallback");
+        assert_eq!(
+            result.status.fallback_reason.as_deref(),
+            Some(RAW_MONITOR_FALLBACK_DECODE_FAILURE)
+        );
 
         fs::remove_dir_all(dir).unwrap();
     }

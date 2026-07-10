@@ -362,6 +362,22 @@ Measured results on 60 JPG files:
 
 Current production default stays on WASM SIMD. WebGPU is available in the lab, but it is not enabled by default because YuNet and SFace are small models and GPU scheduling/data transfer overhead is larger than the compute saved on this machine. The only measured WebGPU win was a narrow combined-run case where AI WebGPU slightly reduced CPU contention, but it is not stable enough to make the default.
 
+## People Split precision audit
+
+Use the read-only production-worker runner to export face diagnostics, identity
+embeddings, automatic clusters, and a visual contact sheet:
+
+```powershell
+node tools/ai-lab/run-people-split-precision-cdp.mjs `
+  --input "C:\path\to\photos" `
+  --output "output\people-split-precision\dev-baseline" `
+  --label "dev-baseline" `
+  --concurrency 1
+```
+
+The command never writes to the source folder. Raw JSON, summary metrics, and
+the contact sheet are written only to the selected output directory.
+
 Recommended defaults:
 
 | Machine class | AI culling | People Split single run | AI + People together |

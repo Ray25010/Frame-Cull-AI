@@ -2,6 +2,7 @@ import * as ort from 'onnxruntime-web/wasm';
 import type { AiModelAssets, AiSubjectRole, PeopleFaceBox, PersonFaceEmbedding } from '../types';
 import { clampFaceBox, createEnhancedFaceDetectionRegions, intersectionOverUnion, mapFaceBoxFromRegion, mergeFaceBoxes, shouldRunEnhancedFaceDetection, type DetectionRegion, type FaceBox } from '../utils/faceDetectionGeometry';
 import { faceStructureQualityFromBoxKeypoints, shouldKeepFaceByContent } from '../utils/faceContentValidation';
+import { rgbaToSfaceChw } from '../utils/sfacePreprocess';
 import { decodeYuNetOutputs, type YuNetOutputMap } from '../utils/yunetPostprocess';
 import { clusterPeopleFaces, faceQualityFromBox, isUsablePeopleFace } from '../utils/peopleSplit';
 
@@ -628,13 +629,8 @@ function bitmapToSFaceTensor(bitmap: ImageBitmap, size: number) {
   if (!context) throw new Error('OffscreenCanvas tensor context is unavailable.');
   context.drawImage(bitmap, 0, 0, size, size);
   const image = context.getImageData(0, 0, size, size).data;
-  const data = new Float32Array(3 * size * size);
   const plane = size * size;
-  for (let pixel = 0, src = 0; pixel < plane; pixel += 1, src += 4) {
-    data[pixel] = image[src + 2];
-    data[plane + pixel] = image[src + 1];
-    data[plane * 2 + pixel] = image[src];
-  }
+  const data = rgbaToSfaceChw(image, plane);
   return new ort.Tensor('float32', data, [1, 3, size, size]);
 }
 

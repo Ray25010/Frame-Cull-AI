@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react';
 import type { MutableRefObject } from 'react';
 import type { Language } from '../i18n';
-import type { AiAnalysis, AutoExposurePreviewAdjustment, PhotoGroup, RawMonitorProfileId } from '../types';
+import type {
+  AiAnalysis,
+  AutoExposurePreviewAdjustment,
+  PhotoGroup,
+  RawMonitorFallbackReason,
+  RawMonitorProfileId,
+} from '../types';
 import {
   getRawMonitorCacheEntry,
   peekRawMonitorCacheEntry,
@@ -15,6 +21,7 @@ export type RawMonitorViewerFrame = {
   ai?: AiAnalysis;
   autoExposure?: AutoExposurePreviewAdjustment | null;
   source?: 'rawtherapee-cache' | 'embedded-preview';
+  fallbackReason?: RawMonitorFallbackReason;
 };
 
 export type RawMonitorPreviewState = {
@@ -65,9 +72,10 @@ export function useRawMonitorViewerFrame({
         alt: group.id,
         ai: group.ai,
         source: cached.fallback ? 'embedded-preview' : 'rawtherapee-cache',
+        fallbackReason: cached.fallbackReason,
       });
       setStatus('ready');
-      setNotice(cacheReadyLabel(language, cached.fallback === true));
+      setNotice(cacheReadyLabel(language, cached.fallback === true, cached.fallbackReason));
       return;
     }
 
@@ -84,9 +92,10 @@ export function useRawMonitorViewerFrame({
             alt: group.id,
             ai: group.ai,
             source: entry.fallback ? 'embedded-preview' : 'rawtherapee-cache',
+            fallbackReason: entry.fallbackReason,
           });
           setStatus('ready');
-          setNotice(cacheReadyLabel(language, entry.fallback === true));
+          setNotice(cacheReadyLabel(language, entry.fallback === true, entry.fallbackReason));
         } else {
           setStatus('missing');
           setNotice(language === 'zh' ? '需要先生成 RAW 监看缓存' : 'Generate RAW monitor cache first');
@@ -118,9 +127,26 @@ export function useRawMonitorViewerFrame({
   return { frame, notice, status, active };
 }
 
-function cacheReadyLabel(language: Language, fallback: boolean) {
-  if (fallback) {
-    return language === 'zh' ? 'RAW 内嵌预览兜底' : 'Embedded RAW preview fallback';
+export function cacheReadyLabel(
+  language: Language,
+  fallback: boolean,
+  fallbackReason?: RawMonitorFallbackReason,
+) {
+  if (fallbackReason === 'decodeFailure') {
+    return language === 'zh'
+      ? 'RAW 解码器无法读取，已使用相机内嵌预览'
+      : 'RAW decoder unavailable; using embedded camera preview';
   }
+  if (fallbackReason === 'engineError') {
+    return language === 'zh'
+      ? 'RAW 引擎不可用，已使用相机内嵌预览'
+      : 'RAW engine unavailable; using embedded camera preview';
+  }
+  if (fallbackReason === 'missingOutput' || fallbackReason === 'invalidOutput') {
+    return language === 'zh'
+      ? 'RAW 引擎输出异常，已使用相机内嵌预览'
+      : 'Invalid RAW engine output; using embedded camera preview';
+  }
+  if (fallback) return language === 'zh' ? 'RAW 内嵌预览兜底' : 'Embedded RAW preview fallback';
   return language === 'zh' ? 'RAW 监看缓存' : 'RAW monitor cache';
 }

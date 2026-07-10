@@ -488,6 +488,7 @@ export interface RawMonitorCacheEntry {
   fromCache: boolean;
   fallback?: boolean;
   cacheSource?: 'rawtherapee' | 'embeddedFallback';
+  fallbackReason?: RawMonitorFallbackReason;
   recentFailure?: boolean;
   missingReason?: string;
 }
@@ -502,11 +503,14 @@ export interface RawMonitorCacheEvent {
   cachePath?: string;
   fallback?: boolean;
   cacheSource?: 'rawtherapee' | 'embeddedFallback';
+  fallbackReason?: RawMonitorFallbackReason;
   skippedReason?: string;
   engineVersion?: string;
   errors?: string[];
   error?: string;
 }
+
+export type RawMonitorFallbackReason = 'decodeFailure' | 'engineError' | 'missingOutput' | 'invalidOutput';
 
 export type RawMonitorCachePhase = 'idle' | 'checking' | 'rendering' | 'done' | 'error' | 'cancelled';
 

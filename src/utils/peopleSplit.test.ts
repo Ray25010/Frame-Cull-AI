@@ -40,6 +40,11 @@ const stableFaceSample = {
   landmarkerOverlap: 0.42,
 };
 
+function embeddingAtDegrees(degrees: number) {
+  const radians = degrees * Math.PI / 180;
+  return [Math.cos(radians), Math.sin(radians), 0];
+}
+
 describe('peopleSplit utils', () => {
   it('normalizes embeddings', () => {
     const normalized = normalizeEmbedding([3, 4]);
@@ -100,6 +105,95 @@ describe('peopleSplit utils', () => {
     const result = clusterPeopleFaces(faces, { threshold: 0.18 });
     expect(result.clusters).toHaveLength(1);
     expect(result.clusters[0].memberFaceKeys).toEqual(expect.arrayContaining(['a1', 'a2', 'a3']));
+  });
+
+  it('does not merge two established people through one close bridge pair', () => {
+    const faces = [
+      createFace({ key: 'a1', photoId: 'a-1', embedding: embeddingAtDegrees(0), ...stableFaceSample }),
+      createFace({ key: 'a2', photoId: 'a-2', embedding: embeddingAtDegrees(2), ...stableFaceSample }),
+      createFace({ key: 'b1', photoId: 'b-1', embedding: embeddingAtDegrees(50), ...stableFaceSample }),
+      createFace({ key: 'b2', photoId: 'b-2', embedding: embeddingAtDegrees(80), ...stableFaceSample }),
+    ];
+
+    const result = clusterPeopleFaces(faces, { threshold: 0.18 });
+
+    expect(result.clusters).toHaveLength(2);
+    expect(result.clusters.map(cluster => cluster.memberFaceKeys.sort())).toEqual(expect.arrayContaining([
+      ['a1', 'a2'],
+      ['b1', 'b2'],
+    ]));
+  });
+
+  it('does not place a moderately similar pair in the same automatic cluster', () => {
+    const faces = [
+      createFace({ key: 'a1', photoId: 'a-1', embedding: embeddingAtDegrees(0), ...stableFaceSample }),
+      createFace({ key: 'b1', photoId: 'b-1', embedding: embeddingAtDegrees(44), ...stableFaceSample }),
+    ];
+
+    const result = clusterPeopleFaces(faces);
+
+    expect(result.clusters.some(cluster => (
+      cluster.memberFaceKeys.includes('a1') && cluster.memberFaceKeys.includes('b1')
+    ))).toBe(false);
+  });
+
+  it('does not let an early weak pair consume a later strong match', () => {
+    const faces = [
+      createFace({ key: 'a1', photoId: 'a-1', embedding: embeddingAtDegrees(0), ...stableFaceSample, quality: 0.99 }),
+      createFace({ key: 'b1', photoId: 'b-1', embedding: embeddingAtDegrees(44), ...stableFaceSample, quality: 0.98 }),
+      createFace({ key: 'a2', photoId: 'a-2', embedding: embeddingAtDegrees(-10), ...stableFaceSample, quality: 0.97 }),
+    ];
+
+    const result = clusterPeopleFaces(faces);
+    const aCluster = result.clusters.find(cluster => cluster.memberFaceKeys.includes('a1'));
+
+    expect(aCluster?.memberFaceKeys).toEqual(expect.arrayContaining(['a1', 'a2']));
+    expect(aCluster?.memberFaceKeys).not.toContain('b1');
+  });
+
+  it('keeps a corroborated three-face identity cluster', () => {
+    const faces = [
+      createFace({ key: 'a1', photoId: 'a-1', embedding: embeddingAtDegrees(0), ...stableFaceSample }),
+      createFace({ key: 'a2', photoId: 'a-2', embedding: embeddingAtDegrees(44), ...stableFaceSample }),
+      createFace({ key: 'a3', photoId: 'a-3', embedding: embeddingAtDegrees(10), ...stableFaceSample }),
+    ];
+
+    const result = clusterPeopleFaces(faces);
+
+    expect(result.clusters).toHaveLength(1);
+    expect(result.clusters[0].memberFaceKeys).toEqual(expect.arrayContaining(['a1', 'a2', 'a3']));
+  });
+
+  it('requires two representative members before extending an established cluster', () => {
+    const faces = [
+      createFace({ key: 'a1', photoId: 'a-1', embedding: embeddingAtDegrees(0), ...stableFaceSample }),
+      createFace({ key: 'a2', photoId: 'a-2', embedding: embeddingAtDegrees(20), ...stableFaceSample }),
+      createFace({ key: 'bridge', photoId: 'b-1', embedding: embeddingAtDegrees(55), ...stableFaceSample }),
+    ];
+
+    const result = clusterPeopleFaces(faces);
+
+    expect(result.clusters).toHaveLength(2);
+    const established = result.clusters.find(cluster => cluster.memberFaceKeys.includes('a1'));
+    expect(established?.memberFaceKeys).toEqual(expect.arrayContaining(['a1', 'a2']));
+    expect(established?.memberFaceKeys).not.toContain('bridge');
+    expect(result.clusters.some(cluster => cluster.memberFaceKeys.length === 1 && cluster.memberFaceKeys[0] === 'bridge')).toBe(true);
+  });
+
+  it('keeps a face unassigned when two people are almost equally plausible', () => {
+    const faces = [
+      createFace({ key: 'a1', photoId: 'a-1', embedding: embeddingAtDegrees(0), ...stableFaceSample }),
+      createFace({ key: 'b1', photoId: 'b-1', embedding: embeddingAtDegrees(50), ...stableFaceSample }),
+      createFace({ key: 'a2', photoId: 'a-2', embedding: embeddingAtDegrees(2), ...stableFaceSample }),
+      createFace({ key: 'b2', photoId: 'b-2', embedding: embeddingAtDegrees(52), ...stableFaceSample }),
+      createFace({ key: 'ambiguous', photoId: 'x-1', embedding: embeddingAtDegrees(25), ...stableFaceSample }),
+    ];
+
+    const result = clusterPeopleFaces(faces, { threshold: 0.30 });
+
+    expect(result.clusters).toHaveLength(2);
+    expect(result.clusters.some(cluster => cluster.memberFaceKeys.includes('ambiguous'))).toBe(false);
+    expect(result.unassignedFaces.map(face => face.key)).toContain('ambiguous');
   });
 
   it('keeps weak one-off detections unassigned instead of creating hundreds of people', () => {
