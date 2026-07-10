@@ -51,9 +51,9 @@ jobs:
           set -euo pipefail
           tag="macos-test-0.1.6-run-${SOURCE_RUN_ID}"
           gh release create "${tag}" packages/*.zip \
+            --repo "${GITHUB_REPOSITORY}" \
             --draft \
             --prerelease \
             --target "${GITHUB_SHA}" \
             --title "FrameCull AI Flash macOS Test 0.1.6" \
             --notes "Internal unnotarized macOS test packages from Actions run ${SOURCE_RUN_ID}. Each ZIP includes a DMG, scoped first-launch helper, Chinese instructions, and checksums."
-
