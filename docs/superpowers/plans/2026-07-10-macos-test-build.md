@@ -98,7 +98,9 @@ this workflow.
 - [ ] **Step 2: Build ad-hoc signed Flash bundles**
 
 Set `APPLE_SIGNING_IDENTITY=-` and run
-`pnpm exec tauri build --config src-tauri/tauri.flash.conf.json --target <target>`.
+`pnpm exec tauri build --features default --config src-tauri/tauri.flash.conf.json --target <target>`.
+Passing the explicit default feature set prevents Tauri from trying to bundle
+the `pro-infer-bench` binary, whose required `pro` feature is disabled in Flash.
 
 - [ ] **Step 3: Stage and verify artifacts**
 
