@@ -98,7 +98,7 @@ this workflow.
 - [ ] **Step 2: Build ad-hoc signed Flash bundles**
 
 Set `APPLE_SIGNING_IDENTITY=-` and run
-`pnpm run tauri:build:flash -- --target <target>`.
+`pnpm exec tauri build --config src-tauri/tauri.flash.conf.json --target <target>`.
 
 - [ ] **Step 3: Stage and verify artifacts**
 

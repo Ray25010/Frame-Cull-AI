@@ -60,7 +60,7 @@ jobs:
         run: /bin/zsh -n tools/macos/FrameCull-First-Launch.command
 
       - name: Build Tauri Flash app
-        run: pnpm run tauri:build:flash -- --target "${{ matrix.rust_target }}"
+        run: pnpm exec tauri build --config src-tauri/tauri.flash.conf.json --target "${{ matrix.rust_target }}"
 
       - name: Stage tester package
         id: stage
