@@ -76,6 +76,38 @@ validate_plist() {
   /usr/bin/plutil -lint "$1" >/dev/null 2>&1
 }
 
+normalize_attach_plist_output() {
+  local plist="$1"
+  local normalized="${plist}.normalized"
+  local line
+  local found_start=0
+  local found_end=0
+
+  if validate_plist "${plist}"; then
+    return 0
+  fi
+  : >"${normalized}" || return 1
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    if (( found_start == 0 )); then
+      [[ "${line}" == '<?xml '* ]] || continue
+      found_start=1
+    fi
+    /usr/bin/printf '%s\n' "${line}" >>"${normalized}" || {
+      /bin/rm -f -- "${normalized}"
+      return 1
+    }
+    if [[ "${line}" == '</plist>' ]]; then
+      found_end=1
+      break
+    fi
+  done <"${plist}"
+  if (( found_start == 0 || found_end == 0 )) || ! validate_plist "${normalized}"; then
+    /bin/rm -f -- "${normalized}"
+    return 1
+  fi
+  /bin/mv -f -- "${normalized}" "${plist}"
+}
+
 read_plist_type() {
   local plist="$1"
   local key_path="$2"
@@ -571,6 +603,8 @@ attach_dmg_readonly() {
       "Could not attach the disk image read-only."
     return 1
   fi
+
+  normalize_attach_plist_output "${plist}" || :
 
   if parse_attach_plist "${plist}" && (( ${#PARSED_PLIST_DEVICES[@]} > 0 )); then
     primary_parse_ok=1

@@ -52,6 +52,7 @@ if (mode === "--source") {
     "read_plist_array_count",
     "parse_plist_devices",
     "normalize_disk_root",
+    "normalize_attach_plist_output",
     '<<<"Y"',
     "/usr/bin/xmllint --xpath",
     "hdiutil info -plist",

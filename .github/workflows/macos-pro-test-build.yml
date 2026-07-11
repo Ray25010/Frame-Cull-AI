@@ -159,56 +159,6 @@ jobs:
           echo "archive_path=${archive}" >> "${GITHUB_OUTPUT}"
           echo "artifact_name=${artifact}" >> "${GITHUB_OUTPUT}"
 
-      - name: Diagnose RawTherapee APFS attach plist
-        if: matrix.rust_target == 'x86_64-apple-darwin'
-        env:
-          RAWTHERAPEE_ARCHIVE: ${{ steps.rawtherapee.outputs.archive_path }}
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          diagnostic_root="$(mktemp -d "${RUNNER_TEMP}/framecull-rawtherapee-attach.XXXXXX")"
-          attach_plist="${diagnostic_root}/attach.plist"
-          info_plist="${diagnostic_root}/info.plist"
-          cleanup_diagnostic() {
-            if [[ -s "${attach_plist}" ]]; then
-              python3 - "${attach_plist}" <<'PY' | while IFS= read -r mount_point; do
-          import plistlib
-          import sys
-
-          with open(sys.argv[1], "rb") as handle:
-              payload = plistlib.load(handle)
-          for entity in payload.get("system-entities", []):
-              mount_point = entity.get("mount-point")
-              if mount_point:
-                  print(mount_point)
-          PY
-                /usr/bin/hdiutil detach "${mount_point}" >/dev/null 2>&1 || :
-              done
-            fi
-            rm -rf -- "${diagnostic_root}"
-          }
-          trap cleanup_diagnostic EXIT
-
-          /usr/bin/ditto -x -k "${RAWTHERAPEE_ARCHIVE}" "${diagnostic_root}/extracted"
-          raw_dmg="${diagnostic_root}/extracted/RawTherapee_macOS_15.4_Universal_5.12_folder/RawTherapee_macOS_15.4_Universal_5.12.dmg"
-          /usr/bin/hdiutil attach -readonly -nobrowse -noautoopen -plist "${raw_dmg}" >"${attach_plist}" <<<"Y"
-          echo "RawTherapee attach plist:"
-          /usr/bin/plutil -p "${attach_plist}"
-          /usr/bin/hdiutil info -plist >"${info_plist}"
-          echo "RawTherapee hdiutil info entry:"
-          python3 - "${info_plist}" "${raw_dmg}" <<'PY'
-          import plistlib
-          import pprint
-          import sys
-
-          with open(sys.argv[1], "rb") as handle:
-              payload = plistlib.load(handle)
-          for image in payload.get("images", []):
-              if image.get("image-path") == sys.argv[2]:
-                  pprint.pp(image)
-          PY
-
       - name: Build Tauri Pro app
         run: pnpm exec tauri build --features pro --config "${{ matrix.tauri_config }}" --target "${{ matrix.rust_target }}"
 

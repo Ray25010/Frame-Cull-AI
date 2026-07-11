@@ -461,7 +461,11 @@ run_hdiutil() {
     local license_response=""
     IFS= read -r license_response || :
     print -r -- "${license_response}" >"${license_response_path}"
-    print -r -- "valid-attach"
+    print -r -- "GNU GENERAL PUBLIC LICENSE"
+    print -r -- '<?xml version="1.0" encoding="UTF-8"?>'
+    print -r -- '<plist version="1.0">'
+    print -r -- '<dict><key>marker</key><string>valid-attach</string></dict>'
+    print -r -- '</plist>'
     return 0
   fi
   if [[ "$1" == "detach" ]]; then
@@ -470,11 +474,23 @@ run_hdiutil() {
   fi
   return 1
 }
-validate_plist() { return 0; }
+read_attach_test_marker() {
+  local content="$(<"$1")"
+  if [[ "${content}" == *'<string>valid-attach</string>'* ]]; then
+    print -r -- "valid-attach"
+  else
+    print -r -- "${content}"
+  fi
+}
+validate_plist() {
+  local content="$(<"$1")"
+  [[ "${content}" == "empty-info" ||
+    ("${content}" == '<?xml '* && "${content}" == *'</plist>') ]]
+}
 read_plist_type() {
   local plist="$1"
   local key_path="$2"
-  local marker="$(<"${plist}")"
+  local marker="$(read_attach_test_marker "${plist}")"
   if [[ "${marker}" == "empty-info" && "${key_path}" == "images" ]]; then
     print -r -- "array"
     return 0
@@ -486,7 +502,7 @@ read_plist_type() {
   return 1
 }
 read_plist_array_count() {
-  local marker="$(<"$1")"
+  local marker="$(read_attach_test_marker "$1")"
   local key_path="$2"
   if [[ "${marker}" == "valid-attach" && "${key_path}" == "system-entities" ]]; then
     print -r -- "1"
@@ -501,7 +517,7 @@ read_plist_array_count() {
 plist_key_exists() {
   local plist="$1"
   local key_path="$2"
-  local marker="$(<"${plist}")"
+  local marker="$(read_attach_test_marker "${plist}")"
   [[ "${marker}" == "valid-attach" && "${key_path}" == "system-entities.0.dev-entry" ]] && return 0
   [[ "${marker}" == "valid-attach" && "${key_path}" == "system-entities.0.mount-point" ]] && return 0
   return 1
@@ -510,7 +526,7 @@ read_plist_value() {
   local plist="$1"
   local index="$2"
   local key="$3"
-  local marker="$(<"${plist}")"
+  local marker="$(read_attach_test_marker "${plist}")"
   if [[ "${marker}" == "valid-attach" && "${index}" == "0" && "${key}" == "dev-entry" ]]; then
     print -r -- "/dev/new"
     return 0
@@ -529,6 +545,9 @@ assert_equal "/Volumes/FrameCull" "${ATTACHED_MOUNT_POINT}" "legal plist end mou
 recorded_license_response=""
 IFS= read -r recorded_license_response <"${license_response_path}"
 assert_equal "Y" "${recorded_license_response}" "DMG attach embedded license response"
+sanitized_attach_output="$(<"${WORK_DIR}/attach-${ATTACH_COUNTER}.plist")"
+assert_contains "${sanitized_attach_output}" '<?xml version="1.0"' "DMG attach sanitized plist"
+assert_not_contains "${sanitized_attach_output}" "GNU GENERAL PUBLIC LICENSE" "DMG attach stripped embedded license text"
 cleanup
 assert_equal "1" "${#detached_devices[@]}" "legal plist end detach count"
 assert_equal "/dev/new" "${detached_devices[1]}" "legal plist end detached device"
