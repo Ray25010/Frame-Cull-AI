@@ -16,7 +16,9 @@ on:
       - "src-tauri/**"
       - "tools/check-release-artifacts.mjs"
       - "tools/postprocess-release-artifacts.mjs"
-      - "tools/macos/FrameCull-Pro-First-Launch.command"
+      - "tools/macos/check-pro-installer-contract.mjs"
+      - "tools/macos/FrameCull-Pro-Install.command"
+      - "tools/macos/FrameCull-Pro-Install.test.zsh"
       - "tools/macos/README-FrameCull-Pro-macOS-first-launch.txt"
   workflow_dispatch:
 
@@ -64,6 +66,12 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Validate Pro installer workflow contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/macos/check-pro-installer-contract.mjs --workflow
+
       - name: Prepare official Intel ONNX Runtime
         if: matrix.rust_target == 'x86_64-apple-darwin'
         shell: bash
@@ -99,7 +107,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          /bin/zsh -n tools/macos/FrameCull-Pro-First-Launch.command
+          /bin/zsh -n tools/macos/FrameCull-Pro-Install.command
+          /bin/zsh -n tools/macos/FrameCull-Pro-Install.test.zsh
+          node tools/macos/check-pro-installer-contract.mjs --source
           node -e '
             const fs = require("node:fs");
             const model = "pro-models/semantic_student_v2_grounded_convnext_v14_five_mountain_region/model.int8.onnx";
@@ -122,6 +132,14 @@ jobs:
           if [[ "${{ matrix.rust_target }}" == "x86_64-apple-darwin" ]]; then
             test -f src-tauri/vendor/onnxruntime/macos-x64/libonnxruntime.1.23.2.dylib
           fi
+
+      - name: Run Pro installer state and Rust tests
+        if: matrix.rust_target == 'aarch64-apple-darwin'
+        shell: bash
+        run: |
+          set -euo pipefail
+          /bin/zsh tools/macos/FrameCull-Pro-Install.test.zsh
+          cargo test --manifest-path src-tauri/Cargo.toml --target "${{ matrix.rust_target }}" --lib tests::macos_rawtherapee_candidates_match_supported_priority_order -- --exact
 
       - name: Download official RawTherapee installer
         id: rawtherapee
@@ -203,14 +221,26 @@ jobs:
           mkdir -p "${stage_dir}"
           cp "${dmg_path}" "${stage_dir}/"
           cp "${RAWTHERAPEE_ARCHIVE}" "${stage_dir}/${RAWTHERAPEE_ARTIFACT}"
-          cp tools/macos/FrameCull-Pro-First-Launch.command "${stage_dir}/"
+          cp tools/macos/FrameCull-Pro-Install.command "${stage_dir}/"
           cp tools/macos/README-FrameCull-Pro-macOS-first-launch.txt "${stage_dir}/"
-          chmod +x "${stage_dir}/FrameCull-Pro-First-Launch.command"
+          chmod +x "${stage_dir}/FrameCull-Pro-Install.command"
 
           (
             cd "${stage_dir}"
-            /usr/bin/shasum -a 256 ./*.dmg "${RAWTHERAPEE_ARTIFACT}" FrameCull-Pro-First-Launch.command README-FrameCull-Pro-macOS-first-launch.txt > SHA256SUMS.txt
+            /usr/bin/shasum -a 256 ./*.dmg "${RAWTHERAPEE_ARTIFACT}" FrameCull-Pro-Install.command README-FrameCull-Pro-macOS-first-launch.txt > SHA256SUMS.txt
+            /bin/zsh ./FrameCull-Pro-Install.command --verify-only
           )
+
+          tamper_dir="${RUNNER_TEMP}/FrameCull-Pro-${ARTIFACT_LABEL}-tampered"
+          /usr/bin/ditto "${stage_dir}" "${tamper_dir}"
+          /usr/bin/printf '\nTamper check sentinel.\n' >> "${tamper_dir}/README-FrameCull-Pro-macOS-first-launch.txt"
+          if (
+            cd "${tamper_dir}" &&
+            /bin/zsh ./FrameCull-Pro-Install.command --verify-only
+          ); then
+            echo "Tampered package unexpectedly passed verify-only."
+            exit 1
+          fi
 
           /usr/bin/ditto -c -k --sequesterRsrc --keepParent "${stage_dir}" "${archive_path}"
           echo "archive_path=${archive_path}" >> "${GITHUB_OUTPUT}"
@@ -250,11 +280,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tag="macos-pro-test-0.1.6-run-${GITHUB_RUN_ID}"
+          tag="macos-pro-test-0.1.6-run-${GITHUB_RUN_ID}-attempt-${GITHUB_RUN_ATTEMPT}"
+          notes_path="${RUNNER_TEMP}/release-notes.txt"
+          cat > "${notes_path}" <<EOF
+          Internal unnotarized FrameCull AI Pro macOS test packages from Actions run ${GITHUB_RUN_ID} attempt ${GITHUB_RUN_ATTEMPT}.
+
+          Each Pro ZIP contains the Pro app DMG, the unified FrameCull-Pro-Install.command installer/update script, the Chinese README, and the pinned official RawTherapee 5.12 macOS Universal ZIP.
+
+          When RawTherapee is already healthy, the script updates only FrameCull. When RawTherapee is missing or verification fails, the script repairs RawTherapee and then updates FrameCull.
+
+          The official RawTherapee ZIP is shipped unchanged and SHA256SUMS.txt covers the FrameCull DMG, the fixed RawTherapee ZIP, FrameCull-Pro-Install.command, and the README.
+
+          FrameCull remains ad-hoc signed and these internal beta packages are not notarized. The legacy first-launch helper is not included.
+          EOF
           gh release create "${tag}" packages/*.zip \
             --repo "${GITHUB_REPOSITORY}" \
             --draft \
             --prerelease \
             --target "${GITHUB_SHA}" \
-            --title "FrameCull AI Pro macOS Test 0.1.6" \
-            --notes "Internal unnotarized FrameCull AI Pro macOS test packages from Actions run ${GITHUB_RUN_ID}. Each Pro ZIP contains the Pro app DMG, bundled Pro model, scoped first-launch helper, Chinese instructions, and the pinned official RawTherapee 5.12 macOS Universal installer ZIP. SHA256SUMS.txt covers the DMG, RawTherapee ZIP, executable helper, and Chinese README. RawTherapee is supplied unchanged as a separate installer archive; it is not embedded in the app or DMG, automatically installed, re-signed, or notarized by this workflow."
+            --title "FrameCull AI Pro macOS Test 0.1.6 (run ${GITHUB_RUN_ID} attempt ${GITHUB_RUN_ATTEMPT})" \
+            --notes-file "${notes_path}"
