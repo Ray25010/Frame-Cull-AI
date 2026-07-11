@@ -231,6 +231,35 @@ jobs:
             /bin/zsh ./FrameCull-Pro-Install.command --verify-only
           )
 
+          installer_path="${stage_dir}/FrameCull-Pro-Install.command"
+          FRAMECULL_INSTALLER_SOURCE_ONLY=1 /bin/zsh -c '
+            set -euo pipefail
+            source "$0"
+            WORK_DIR="$(/usr/bin/mktemp -d "${RUNNER_TEMP}/framecull-pro-mount-smoke.XXXXXX")"
+            post_cleanup_info=""
+            cleanup_mount_smoke() {
+              cleanup || :
+              [[ -z "${post_cleanup_info}" ]] || /bin/rm -f -- "${post_cleanup_info}"
+            }
+            trap cleanup_mount_smoke EXIT
+            verify_package_contract
+            extract_rawtherapee_payload
+            attach_dmg_readonly "${FRAME_DMG}"
+            [[ -d "${ATTACHED_MOUNT_POINT}/FrameCull AI Pro.app" ]]
+            attach_dmg_readonly "${RAW_PAYLOAD_DMG}"
+            [[ -d "${ATTACHED_MOUNT_POINT}/RawTherapee.app" ]]
+            cleanup
+            post_cleanup_info="$(/usr/bin/mktemp "${RUNNER_TEMP}/framecull-pro-post-cleanup.XXXXXX")"
+            run_hdiutil info -plist >"${post_cleanup_info}"
+            parse_plist_devices "${post_cleanup_info}" "${FRAME_DMG}"
+            (( ${#PARSED_PLIST_DEVICES[@]} == 0 ))
+            parse_plist_devices "${post_cleanup_info}" "${RAW_PAYLOAD_DMG}"
+            (( ${#PARSED_PLIST_DEVICES[@]} == 0 ))
+            /bin/rm -f -- "${post_cleanup_info}"
+            post_cleanup_info=""
+            trap - EXIT
+          ' "${installer_path}"
+
           tamper_dir="${RUNNER_TEMP}/FrameCull-Pro-${ARTIFACT_LABEL}-tampered"
           /usr/bin/ditto "${stage_dir}" "${tamper_dir}"
           /usr/bin/printf '\nTamper check sentinel.\n' >> "${tamper_dir}/README-FrameCull-Pro-macOS-first-launch.txt"

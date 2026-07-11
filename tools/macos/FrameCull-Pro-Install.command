@@ -18,6 +18,8 @@ typeset -a PARSED_PLIST_DEVICES
 PARSED_PLIST_DEVICES=()
 typeset -a PARSED_ATTACH_MOUNT_POINTS
 PARSED_ATTACH_MOUNT_POINTS=()
+typeset -a PARSED_ATTACH_MOUNT_DEVICES
+PARSED_ATTACH_MOUNT_DEVICES=()
 typeset -gi ATTACH_COUNTER=0
 WORK_DIR=""
 FRAME_DMG=""
@@ -117,10 +119,12 @@ parse_plist_devices() {
   local plist="$1"
   local image_filter="${2:-}"
   local image_index image_count image_path current_image_path entities_path entities_type
-  local entity_index entity_count entity_path device
+  local entity_index entity_count entity_path device mount_point
   local images_type
 
   PARSED_PLIST_DEVICES=()
+  PARSED_ATTACH_MOUNT_POINTS=()
+  PARSED_ATTACH_MOUNT_DEVICES=()
   validate_plist "${plist}" || return 1
   images_type="$(read_plist_type "${plist}" "images")" || return 1
   [[ "${images_type}" == "array" ]] || return 1
@@ -142,11 +146,19 @@ parse_plist_devices() {
     [[ "${entity_count}" == <-> ]] || return 1
     for (( entity_index = 0; entity_index < entity_count; entity_index++ )); do
       entity_path="${entities_path}.${entity_index}"
+      device=""
       if plist_key_exists "${plist}" "${entity_path}.dev-entry"; then
         device="$(read_plist_path_value "${plist}" "${entity_path}.dev-entry")" || return 1
         device="$(normalize_disk_root "${device}")"
         if ! array_contains "${device}" "${PARSED_PLIST_DEVICES[@]}"; then
           PARSED_PLIST_DEVICES+=("${device}")
+        fi
+      fi
+      if [[ -n "${device}" ]] && plist_key_exists "${plist}" "${entity_path}.mount-point"; then
+        if mount_point="$(read_plist_path_value "${plist}" "${entity_path}.mount-point")" &&
+          [[ -n "${mount_point}" ]]; then
+          PARSED_ATTACH_MOUNT_POINTS+=("${mount_point}")
+          PARSED_ATTACH_MOUNT_DEVICES+=("${device}")
         fi
       fi
     done
@@ -160,6 +172,7 @@ parse_attach_plist() {
 
   PARSED_PLIST_DEVICES=()
   PARSED_ATTACH_MOUNT_POINTS=()
+  PARSED_ATTACH_MOUNT_DEVICES=()
   validate_plist "${plist}" || return 1
   entities_type="$(read_plist_type "${plist}" "system-entities")" || return 1
   [[ "${entities_type}" == "array" ]] || return 1
@@ -168,6 +181,7 @@ parse_attach_plist() {
 
   for (( index = 0; index < entity_count; index++ )); do
     entity_path="system-entities.${index}"
+    device=""
     if plist_key_exists "${plist}" "${entity_path}.dev-entry"; then
       device="$(read_plist_value "${plist}" "${index}" "dev-entry")" || return 1
       device="$(normalize_disk_root "${device}")"
@@ -176,8 +190,10 @@ parse_attach_plist() {
       fi
     fi
     if plist_key_exists "${plist}" "${entity_path}.mount-point"; then
+      [[ -n "${device}" ]] || return 1
       mount_point="$(read_plist_value "${plist}" "${index}" "mount-point")" || return 1
       PARSED_ATTACH_MOUNT_POINTS+=("${mount_point}")
+      PARSED_ATTACH_MOUNT_DEVICES+=("${device}")
     fi
   done
 }
@@ -530,8 +546,8 @@ extract_rawtherapee_payload() {
 
 attach_dmg_readonly() {
   local dmg="$1"
-  local plist before_info_plist after_info_plist device primary_parse_ok=0 newly_registered=0
-  local -a before_devices attached_devices mount_points new_devices
+  local plist before_info_plist after_info_plist device mount_device cleanup_device="" primary_parse_ok=0 mount_device_is_new=0
+  local -a before_devices attached_devices mount_points mount_devices new_devices
 
   [[ -f "${dmg}" ]] || fail \
     "找不到磁盘映像：${dmg}" \
@@ -560,6 +576,7 @@ attach_dmg_readonly() {
     primary_parse_ok=1
     attached_devices=("${PARSED_PLIST_DEVICES[@]}")
     mount_points=("${PARSED_ATTACH_MOUNT_POINTS[@]}")
+    mount_devices=("${PARSED_ATTACH_MOUNT_DEVICES[@]}")
   else
     if ! run_hdiutil info -plist >"${after_info_plist}" || ! parse_plist_devices "${after_info_plist}" "${dmg}"; then
       fail \
@@ -568,7 +585,8 @@ attach_dmg_readonly() {
       return 1
     fi
     attached_devices=("${PARSED_PLIST_DEVICES[@]}")
-    mount_points=()
+    mount_points=("${PARSED_ATTACH_MOUNT_POINTS[@]}")
+    mount_devices=("${PARSED_ATTACH_MOUNT_DEVICES[@]}")
   fi
 
   new_devices=()
@@ -578,15 +596,29 @@ attach_dmg_readonly() {
       new_devices+=("${device}")
     fi
   done
-  newly_registered="${#new_devices[@]}"
+  if (( ${#mount_points[@]} == 1 && ${#mount_devices[@]} == 1 )); then
+    mount_device="${mount_devices[1]}"
+    if array_contains "${mount_device}" "${new_devices[@]}"; then
+      mount_device_is_new=1
+      cleanup_device="${mount_device}"
+    fi
+  fi
+  if [[ -z "${cleanup_device}" ]] && (( ${#new_devices[@]} > 0 )); then
+    cleanup_device="${new_devices[1]}"
+  fi
+  if [[ -n "${cleanup_device}" ]]; then
+    MOUNTED_DEVICES+=("${cleanup_device}")
+  fi
+  if (( primary_parse_ok == 1 && mount_device_is_new == 1 )); then
+    ATTACHED_MOUNT_POINT="${mount_points[1]}"
+    return 0
+  fi
   if (( ${#new_devices[@]} != 1 )); then
-    MOUNTED_DEVICES+=("${new_devices[@]}")
     fail \
       "磁盘映像必须且只能产生一个新的根设备。" \
       "The disk image must produce exactly one new root device."
     return 1
   fi
-  MOUNTED_DEVICES+=("${new_devices[@]}")
   if (( primary_parse_ok == 0 )); then
     fail \
       "磁盘映像已挂载，但 attach 输出无法解析；已登记新增设备用于清理。" \
@@ -599,7 +631,10 @@ attach_dmg_readonly() {
       "The disk image must produce exactly one mount point."
     return 1
   fi
-  ATTACHED_MOUNT_POINT="${mount_points[1]}"
+  fail \
+    "挂载点必须属于本次磁盘映像新产生的设备。" \
+    "The mount point must belong to a newly attached disk device."
+  return 1
 }
 
 build_frame_only_transaction_shell() {

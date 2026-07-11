@@ -137,24 +137,41 @@ if (mode === "--source") {
     const beforeInfoIndex = script.indexOf('run_hdiutil info -plist >"${before_info_plist}"', attachIndex);
     const attachCallIndex = script.indexOf("run_hdiutil attach -readonly", attachIndex);
     const afterInfoIndex = script.indexOf('run_hdiutil info -plist >"${after_info_plist}"', attachCallIndex);
-    const registerDeviceIndex = script.indexOf('MOUNTED_DEVICES+=("${new_devices[@]}")', attachIndex);
+    const selectMountedDeviceIndex = script.indexOf('if array_contains "${mount_device}" "${new_devices[@]}"; then', attachIndex);
+    const selectMountedCleanupIndex = script.indexOf('cleanup_device="${mount_device}"', selectMountedDeviceIndex);
+    const selectFallbackCleanupIndex = script.indexOf('cleanup_device="${new_devices[1]}"', selectMountedCleanupIndex);
+    const registerCleanupDeviceIndex = script.indexOf('MOUNTED_DEVICES+=("${cleanup_device}")', selectFallbackCleanupIndex);
+    const successValidationIndex = script.indexOf('if (( primary_parse_ok == 1 && mount_device_is_new == 1 )); then', registerCleanupDeviceIndex);
+    const setMountPointIndex = script.indexOf('ATTACHED_MOUNT_POINT="${mount_points[1]}"', successValidationIndex);
     const assertMountIndex = script.indexOf('if (( ${#mount_points[@]} != 1 )); then', attachIndex);
+    const registerAllDevicesIndex = script.indexOf('MOUNTED_DEVICES+=("${new_devices[@]}")', attachIndex);
     if (
       attachIndex < 0 ||
       beforeInfoIndex < 0 ||
       attachCallIndex < 0 ||
       afterInfoIndex < 0 ||
-      registerDeviceIndex < 0 ||
+      selectMountedDeviceIndex < 0 ||
+      selectMountedCleanupIndex < 0 ||
+      selectFallbackCleanupIndex < 0 ||
+      registerCleanupDeviceIndex < 0 ||
+      successValidationIndex < 0 ||
+      setMountPointIndex < 0 ||
       assertMountIndex < 0 ||
+      registerAllDevicesIndex >= 0 ||
       !(
         attachIndex < beforeInfoIndex &&
         beforeInfoIndex < attachCallIndex &&
         attachCallIndex < afterInfoIndex &&
-        afterInfoIndex < registerDeviceIndex &&
-        registerDeviceIndex < assertMountIndex
+        afterInfoIndex < selectMountedDeviceIndex &&
+        selectMountedDeviceIndex < selectMountedCleanupIndex &&
+        selectMountedCleanupIndex < selectFallbackCleanupIndex &&
+        selectFallbackCleanupIndex < registerCleanupDeviceIndex &&
+        registerCleanupDeviceIndex < successValidationIndex &&
+        successValidationIndex < setMountPointIndex &&
+        setMountPointIndex < assertMountIndex
       )
     ) {
-      failures.push(`${scriptPath}: attach must diff structured before/after device state before mount validation`);
+      failures.push(`${scriptPath}: each attach must register at most one mounted or fallback cleanup device`);
     }
 
     const cleanupStart = script.indexOf("cleanup() {");
@@ -222,11 +239,12 @@ if (mode === "--source") {
     if (!script.includes('device="$(normalize_disk_root "${device}")"')) {
       failures.push(`${scriptPath}: attach devices must be normalized to whole-disk roots`);
     }
+    const mountDeviceAssociations = script.match(/PARSED_ATTACH_MOUNT_DEVICES\+=\("\$\{device\}"\)/g) ?? [];
+    if (mountDeviceAssociations.length < 2) {
+      failures.push(`${scriptPath}: attach output and fallback info parsing must associate each mount point with its entity device`);
+    }
     if (!script.includes('parse_plist_devices "${before_info_plist}" "${dmg}"') || !script.includes('parse_plist_devices "${after_info_plist}" "${dmg}"')) {
       failures.push(`${scriptPath}: fallback hdiutil info parsing must be scoped to the target image path`);
-    }
-    if (!script.includes('if (( ${#new_devices[@]} != 1 )); then')) {
-      failures.push(`${scriptPath}: each attach must register exactly one new root device`);
     }
 
     const terminateStart = script.indexOf("terminate_active_cli() {");
@@ -411,6 +429,12 @@ if (mode === "--source") {
     "FrameCull-Pro-Install.test.zsh",
     "check-pro-installer-contract.mjs --workflow",
     "--verify-only",
+    "FRAMECULL_INSTALLER_SOURCE_ONLY=1",
+    'attach_dmg_readonly "${FRAME_DMG}"',
+    'attach_dmg_readonly "${RAW_PAYLOAD_DMG}"',
+    'run_hdiutil info -plist >"${post_cleanup_info}"',
+    'parse_plist_devices "${post_cleanup_info}" "${FRAME_DMG}"',
+    'parse_plist_devices "${post_cleanup_info}" "${RAW_PAYLOAD_DMG}"',
   ]);
 
   if (workflow?.includes("FrameCull-Pro-First-Launch.command")) {

@@ -612,6 +612,97 @@ assert_equal "/dev/disk7" "${detached_devices[1]}" "root plus slice detached onl
 
 MOUNTED_DEVICES=()
 ATTACHED_MOUNT_POINT=""
+WORK_DIR="${TEST_ROOT}/attach-apfs-synthesized-work"
+/bin/mkdir -p "${WORK_DIR}"
+detached_devices=()
+run_hdiutil() {
+  if [[ "$1" == "info" ]]; then
+    print -r -- "empty-info"
+    return 0
+  fi
+  if [[ "$1" == "attach" ]]; then
+    print -r -- "valid-attach-apfs-synthesized"
+    return 0
+  fi
+  if [[ "$1" == "detach" ]]; then
+    detached_devices+=("$2")
+    return 0
+  fi
+  return 1
+}
+validate_plist() { return 0; }
+read_plist_type() {
+  local marker="$(<"$1")"
+  local key_path="$2"
+  case "${marker}:${key_path}" in
+    empty-info:images|valid-attach-apfs-synthesized:system-entities)
+      print -r -- "array"
+      return 0
+      ;;
+  esac
+  return 1
+}
+read_plist_array_count() {
+  local marker="$(<"$1")"
+  local key_path="$2"
+  case "${marker}:${key_path}" in
+    empty-info:images)
+      print -r -- "0"
+      ;;
+    valid-attach-apfs-synthesized:system-entities)
+      print -r -- "4"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+plist_key_exists() {
+  local marker="$(<"$1")"
+  local key_path="$2"
+  case "${marker}:${key_path}" in
+    valid-attach-apfs-synthesized:system-entities.[0-3].dev-entry|valid-attach-apfs-synthesized:system-entities.3.mount-point)
+      return 0
+      ;;
+  esac
+  return 1
+}
+read_plist_value() {
+  local marker="$(<"$1")"
+  local index="$2"
+  local key="$3"
+  case "${marker}:${index}:${key}" in
+    valid-attach-apfs-synthesized:0:dev-entry)
+      print -r -- "/dev/disk9"
+      ;;
+    valid-attach-apfs-synthesized:1:dev-entry)
+      print -r -- "/dev/disk9s1"
+      ;;
+    valid-attach-apfs-synthesized:2:dev-entry)
+      print -r -- "/dev/disk10"
+      ;;
+    valid-attach-apfs-synthesized:3:dev-entry)
+      print -r -- "/dev/disk10s1"
+      ;;
+    valid-attach-apfs-synthesized:3:mount-point)
+      print -r -- "/Volumes/RawTherapee"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+read_plist_path_value() { return 1; }
+attach_dmg_readonly "${FRAME_DMG}"
+assert_equal "1" "${#MOUNTED_DEVICES[@]}" "APFS synthesized attach registered device count"
+assert_equal "/dev/disk10" "${MOUNTED_DEVICES[1]}" "APFS synthesized attach registered mounted volume root"
+assert_equal "/Volumes/RawTherapee" "${ATTACHED_MOUNT_POINT}" "APFS synthesized attach mount point"
+cleanup
+assert_equal "1" "${#detached_devices[@]}" "APFS synthesized attach detach count"
+assert_equal "/dev/disk10" "${detached_devices[1]}" "APFS synthesized attach detached mounted volume root only"
+
+MOUNTED_DEVICES=()
+ATTACHED_MOUNT_POINT=""
 WORK_DIR="${TEST_ROOT}/attach-slice-only-work"
 /bin/mkdir -p "${WORK_DIR}"
 detached_devices=()
@@ -902,6 +993,134 @@ assert_equal "/dev/disk21" "${MOUNTED_DEVICES[1]}" "scoped fallback registered t
 cleanup
 assert_equal "1" "${#detached_devices[@]}" "scoped fallback detach count"
 assert_equal "/dev/disk21" "${detached_devices[1]}" "scoped fallback detached target image root only"
+
+for fallback_apfs_variant in canonical reordered; do
+  MOUNTED_DEVICES=()
+  ATTACHED_MOUNT_POINT=""
+  WORK_DIR="${TEST_ROOT}/attach-fallback-apfs-${fallback_apfs_variant}-work"
+  /bin/mkdir -p "${WORK_DIR}"
+  detached_devices=()
+  info_calls=0
+  run_hdiutil() {
+    if [[ "$1" == "info" ]]; then
+      info_calls=$((info_calls + 1))
+      if (( info_calls == 1 )); then
+        print -r -- "fallback-apfs-${fallback_apfs_variant}-before-info"
+      else
+        print -r -- "fallback-apfs-${fallback_apfs_variant}-after-info"
+      fi
+      return 0
+    fi
+    if [[ "$1" == "attach" ]]; then
+      print -r -- "malformed-attach"
+      return 0
+    fi
+    if [[ "$1" == "detach" ]]; then
+      detached_devices+=("$2")
+      return 0
+    fi
+    return 1
+  }
+  validate_plist() {
+    [[ "$(<"$1")" != "malformed-attach" ]]
+  }
+  read_plist_type() {
+    local marker="$(<"$1")"
+    local key_path="$2"
+    case "${marker}:${key_path}" in
+      fallback-apfs-*-before-info:images|fallback-apfs-*-after-info:images|fallback-apfs-*-after-info:images.0.system-entities)
+        print -r -- "array"
+        return 0
+        ;;
+    esac
+    return 1
+  }
+  read_plist_array_count() {
+    local marker="$(<"$1")"
+    local key_path="$2"
+    case "${marker}:${key_path}" in
+      fallback-apfs-*-before-info:images)
+        print -r -- "0"
+        ;;
+      fallback-apfs-*-after-info:images)
+        print -r -- "1"
+        ;;
+      fallback-apfs-*-after-info:images.0.system-entities)
+        print -r -- "4"
+        ;;
+      *)
+        return 1
+        ;;
+    esac
+  }
+  plist_key_exists() {
+    local marker="$(<"$1")"
+    local key_path="$2"
+    case "${marker}:${key_path}" in
+      fallback-apfs-*-after-info:images.0.image-path|fallback-apfs-*-after-info:images.0.system-entities|fallback-apfs-*-after-info:images.0.system-entities.[0-3].dev-entry)
+        return 0
+        ;;
+      fallback-apfs-canonical-after-info:images.0.system-entities.3.mount-point|fallback-apfs-reordered-after-info:images.0.system-entities.1.mount-point)
+        return 0
+        ;;
+    esac
+    return 1
+  }
+  read_plist_value() { return 1; }
+  read_plist_path_value() {
+    local marker="$(<"$1")"
+    local key_path="$2"
+    case "${marker}:${key_path}" in
+      fallback-apfs-*-after-info:images.0.image-path)
+        print -r -- "${FRAME_DMG}"
+        ;;
+      fallback-apfs-canonical-after-info:images.0.system-entities.0.dev-entry)
+        print -r -- "/dev/disk9"
+        ;;
+      fallback-apfs-canonical-after-info:images.0.system-entities.1.dev-entry)
+        print -r -- "/dev/disk9s1"
+        ;;
+      fallback-apfs-canonical-after-info:images.0.system-entities.2.dev-entry)
+        print -r -- "/dev/disk10"
+        ;;
+      fallback-apfs-canonical-after-info:images.0.system-entities.3.dev-entry)
+        print -r -- "/dev/disk10s1"
+        ;;
+      fallback-apfs-reordered-after-info:images.0.system-entities.0.dev-entry)
+        print -r -- "/dev/disk9s1"
+        ;;
+      fallback-apfs-reordered-after-info:images.0.system-entities.1.dev-entry)
+        print -r -- "/dev/disk10s1"
+        ;;
+      fallback-apfs-reordered-after-info:images.0.system-entities.2.dev-entry)
+        print -r -- "/dev/disk9"
+        ;;
+      fallback-apfs-reordered-after-info:images.0.system-entities.3.dev-entry)
+        print -r -- "/dev/disk10"
+        ;;
+      fallback-apfs-canonical-after-info:images.0.system-entities.3.mount-point|fallback-apfs-reordered-after-info:images.0.system-entities.1.mount-point)
+        print -r -- "/Volumes/RawTherapee"
+        ;;
+      *)
+        return 1
+        ;;
+    esac
+  }
+  typeset -gi fallback_apfs_attach_failed=0
+  if attach_dmg_readonly "${FRAME_DMG}"; then
+    print -u2 -r -- "${fallback_apfs_variant} APFS fallback attach test: expected failure"
+    return 1
+  else
+    fallback_apfs_attach_failed=1
+  fi
+  assert_equal "1" "${fallback_apfs_attach_failed}" "${fallback_apfs_variant} APFS fallback attach failure result"
+  assert_equal "2" "${info_calls}" "${fallback_apfs_variant} APFS fallback info snapshot count"
+  assert_equal "1" "${#MOUNTED_DEVICES[@]}" "${fallback_apfs_variant} APFS fallback registered one cleanup device"
+  assert_equal "/dev/disk10" "${MOUNTED_DEVICES[1]}" "${fallback_apfs_variant} APFS fallback selected mounted entity root"
+  cleanup
+  assert_equal "1" "${#detached_devices[@]}" "${fallback_apfs_variant} APFS fallback detach count"
+  assert_equal "/dev/disk10" "${detached_devices[1]}" "${fallback_apfs_variant} APFS fallback detached mounted entity root only"
+done
 
 transaction_test_root="${TEST_ROOT}/transaction"
 /bin/rm -rf -- "${transaction_test_root}"
