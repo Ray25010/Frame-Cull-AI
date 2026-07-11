@@ -235,7 +235,6 @@ jobs:
           FRAMECULL_INSTALLER_SOURCE_ONLY=1 /bin/zsh -c '
             set -euo pipefail
             source "$0"
-            export com_apple_hdid_debug=1
             WORK_DIR="$(/usr/bin/mktemp -d "${RUNNER_TEMP}/framecull-pro-mount-smoke.XXXXXX")"
             post_cleanup_info=""
             cleanup_mount_smoke() {

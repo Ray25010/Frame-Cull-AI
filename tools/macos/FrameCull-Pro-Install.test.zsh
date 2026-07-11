@@ -450,6 +450,7 @@ WORK_DIR="${TEST_ROOT}/attach-work"
 typeset -a detached_devices
 detached_devices=()
 typeset -gi info_calls=0
+license_response_path="${TEST_ROOT}/attach-license-response"
 run_hdiutil() {
   if [[ "$1" == "info" ]]; then
     info_calls=$((info_calls + 1))
@@ -457,6 +458,9 @@ run_hdiutil() {
     return 0
   fi
   if [[ "$1" == "attach" ]]; then
+    local license_response=""
+    IFS= read -r license_response || :
+    print -r -- "${license_response}" >"${license_response_path}"
     print -r -- "valid-attach"
     return 0
   fi
@@ -522,6 +526,9 @@ attach_dmg_readonly "${FRAME_DMG}"
 assert_equal "1" "${#MOUNTED_DEVICES[@]}" "legal plist end registered device count"
 assert_equal "/dev/new" "${MOUNTED_DEVICES[1]}" "legal plist end registered device"
 assert_equal "/Volumes/FrameCull" "${ATTACHED_MOUNT_POINT}" "legal plist end mount point"
+recorded_license_response=""
+IFS= read -r recorded_license_response <"${license_response_path}"
+assert_equal "Y" "${recorded_license_response}" "DMG attach embedded license response"
 cleanup
 assert_equal "1" "${#detached_devices[@]}" "legal plist end detach count"
 assert_equal "/dev/new" "${detached_devices[1]}" "legal plist end detached device"

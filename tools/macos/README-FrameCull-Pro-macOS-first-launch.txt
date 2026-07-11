@@ -12,6 +12,7 @@ FrameCull AI Pro macOS 内部测试版
 
 脚本会自动选择安全路径：
 - 首次安装，或 RawTherapee app / CLI 缺失、损坏、不可执行、版本验证失败时，会修复并安装 FrameCull AI Pro、RawTherapee 和独立 CLI。
+- 修复 RawTherapee 时，脚本会自动确认官方 DMG 内嵌的 GNU GPL v3 许可页以完成无交互挂载；许可全文保留在 RawTherapee.app/Contents/Resources/LICENSE。
 - RawTherapee 健康时，后续更新只更新 FrameCull AI Pro；脚本只更新 FrameCull，不会重新解压、挂载、替换或修改 RawTherapee 和 CLI。
 - 任何校验、挂载、授权、CLI 验证或签名验证失败时，脚本会停止且不会启动 FrameCull AI Pro。
 

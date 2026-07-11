@@ -52,6 +52,7 @@ if (mode === "--source") {
     "read_plist_array_count",
     "parse_plist_devices",
     "normalize_disk_root",
+    '<<<"Y"',
     "/usr/bin/xmllint --xpath",
     "hdiutil info -plist",
     'image_path="images.${image_index}"',
@@ -415,6 +416,7 @@ if (mode === "--source") {
     "/bin/zsh ",
     "后续更新",
     "只更新 FrameCull",
+    "GNU GPL v3",
   ]);
 
   if (existsSync(resolve(root, oldHelperPath))) {

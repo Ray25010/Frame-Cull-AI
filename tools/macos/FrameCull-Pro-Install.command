@@ -565,7 +565,7 @@ attach_dmg_readonly() {
   fi
   before_devices=("${PARSED_PLIST_DEVICES[@]}")
 
-  if ! run_hdiutil attach -readonly -nobrowse -noautoopen -plist "${dmg}" >"${plist}"; then
+  if ! run_hdiutil attach -readonly -nobrowse -noautoopen -plist "${dmg}" >"${plist}" <<<"Y"; then
     fail \
       "无法只读挂载磁盘映像。" \
       "Could not attach the disk image read-only."
