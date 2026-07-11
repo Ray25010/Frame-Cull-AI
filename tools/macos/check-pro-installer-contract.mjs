@@ -62,9 +62,14 @@ if (mode === "--source") {
     "build_frame_and_raw_transaction_shell",
     "terminate_active_cli",
     "ACTIVE_CLI_PID",
-    "ACTIVE_CLI_PGID",
+    "ACTIVE_CLI_TREE_PIDS",
     "ACTIVE_CLI_OUTPUT_PATH",
-    "setopt localoptions monitor",
+    "CLI_VERSION_OUTPUT",
+    "ACTIVE_CLI_FATAL_EXIT_STATUS",
+    "/usr/bin/pgrep -P",
+    "/bin/kill -STOP",
+    "/bin/kill -KILL",
+    'wait "${active_pid}"',
     "is_rawtherapee_version_output",
     "RawTherapee, version ",
     "open_frame_app",
@@ -76,7 +81,11 @@ if (mode === "--source") {
       { label: "sudo", pattern: /\bsudo\b/i },
       { label: "eval", pattern: /\beval\b/ },
       { label: "setsid", pattern: /\bsetsid\b/ },
-      { label: "pgrep", pattern: /\bpgrep\b/ },
+      { label: "setopt monitor", pattern: /setopt\s+[^\n#]*\bmonitor\b/ },
+      { label: "ACTIVE_CLI_PGID", pattern: /\bACTIVE_CLI_PGID\b/ },
+      { label: "process_group_exists", pattern: /\bprocess_group_exists\b/ },
+      { label: "negative PGID kill", pattern: /\/bin\/kill\s+-[A-Z]+\s+--\s+"-\$\{[^}]+\}"/ },
+      { label: "negative PGID poll", pattern: /\/bin\/kill\s+-0\s+--\s+"-\$\{[^}]+\}"/ },
       { label: "spctl --master-disable", pattern: /spctl\s+--master-disable/ },
       { label: "ditto env override", pattern: /FRAMECULL_INSTALLER_DITTO_BIN/ },
       { label: "xattr env override", pattern: /FRAMECULL_INSTALLER_XATTR_BIN/ },
@@ -87,6 +96,8 @@ if (mode === "--source") {
       { label: "kill env override", pattern: /FRAMECULL_INSTALLER_KILL_BIN/ },
       { label: "test signal checkpoint", pattern: /FRAMECULL_INSTALLER_TEST_SIGNAL_CHECKPOINT/ },
       { label: "checkpoint hook", pattern: /checkpoint\(\)/ },
+      { label: "run_cli command substitution", pattern: /version_output="\$\(run_cli_version_with_timeout/ },
+      { label: "find_healthy command substitution", pattern: /healthy_cli="\$\(find_healthy_rawtherapee_cli/ },
     ]) {
       if (forbidden.pattern.test(script)) {
         failures.push(`${scriptPath}: forbidden ${forbidden.label}`);
@@ -152,14 +163,11 @@ if (mode === "--source") {
     if (!cleanupBody.includes("terminate_active_cli")) {
       failures.push(`${scriptPath}: cleanup must terminate the active CLI process tree`);
     }
+    if (!cleanupBody.includes("ACTIVE_CLI_TREE_PIDS=()")) {
+      failures.push(`${scriptPath}: cleanup must clear the active CLI tree after success`);
+    }
     if (!cleanupBody.includes('ACTIVE_CLI_OUTPUT_PATH=""')) {
       failures.push(`${scriptPath}: cleanup must clear the active CLI output path`);
-    }
-    if (!script.includes('/bin/kill -TERM -- "-${active_pgid}"') || !script.includes('/bin/kill -KILL -- "-${active_pgid}"')) {
-      failures.push(`${scriptPath}: timeout cleanup must signal the entire isolated process group`);
-    }
-    if (!script.includes('wait "${active_pid}"') || !script.includes('process_group_exists "${active_pgid}"')) {
-      failures.push(`${scriptPath}: timeout cleanup must wait for the leader and poll the process group`);
     }
     if (script.includes('[[ "${version_output}" == *RawTherapee* ]]')) {
       failures.push(`${scriptPath}: RawTherapee health must not use a broad substring match`);
@@ -219,6 +227,97 @@ if (mode === "--source") {
     }
     if (!script.includes('if (( ${#new_devices[@]} != 1 )); then')) {
       failures.push(`${scriptPath}: each attach must register exactly one new root device`);
+    }
+
+    const terminateStart = script.indexOf("terminate_active_cli() {");
+    const pauseStart = script.indexOf("pause_if_interactive() {", terminateStart);
+    const terminateBody = script.slice(terminateStart, pauseStart);
+    const rootStopIndex = terminateBody.indexOf('/bin/kill -STOP "${active_pid}"');
+    const childScanIndex = terminateBody.indexOf('/usr/bin/pgrep -P "${parent_pid}"');
+    const childStopIndex = terminateBody.indexOf('/bin/kill -STOP "${child_pid}"');
+    const childRecordIndex = terminateBody.indexOf('active_cli_tree_record_pid "${child_pid}"');
+    const killIndex = terminateBody.indexOf('/bin/kill -KILL "${tree_pid}"');
+    const waitIndex = terminateBody.indexOf('wait "${active_pid}"');
+    const survivorPollIndex = terminateBody.indexOf('if active_cli_tree_has_live_pids');
+    if (
+      terminateStart < 0 ||
+      pauseStart < 0 ||
+      rootStopIndex < 0 ||
+      childScanIndex < 0 ||
+      childStopIndex < 0 ||
+      childRecordIndex < 0 ||
+      killIndex < 0 ||
+      waitIndex < 0 ||
+      survivorPollIndex < 0 ||
+      !(rootStopIndex < childScanIndex && rootStopIndex < childStopIndex && childStopIndex < childRecordIndex && childRecordIndex < killIndex && killIndex < waitIndex && waitIndex < survivorPollIndex)
+    ) {
+      failures.push(`${scriptPath}: timeout cleanup must freeze before discovery, then KILL, wait, and poll survivors`);
+    }
+
+    const cleanupSuccessGuardIndex = cleanupBody.indexOf("if (( active_cli_cleanup_ok == 1 )); then");
+    const cleanupOutputClearIndex = cleanupBody.indexOf('ACTIVE_CLI_OUTPUT_PATH=""');
+    const cleanupWorkDirIndex = cleanupBody.indexOf('if [[ -n "${WORK_DIR}" && -d "${WORK_DIR}" ]]; then');
+    if (
+      cleanupSuccessGuardIndex < 0 ||
+      cleanupOutputClearIndex < 0 ||
+      cleanupWorkDirIndex < 0 ||
+      !(cleanupSuccessGuardIndex < cleanupOutputClearIndex && cleanupSuccessGuardIndex < cleanupWorkDirIndex)
+    ) {
+      failures.push(`${scriptPath}: cleanup must only clear active CLI output state and WORK_DIR after terminate_active_cli succeeds`);
+    }
+
+    const runCliStart = script.indexOf("run_cli_version_with_timeout() {");
+    const runCliEnd = script.indexOf("is_rawtherapee_version_output() {", runCliStart);
+    const runCliBody = script.slice(runCliStart, runCliEnd);
+    const staleGuardIndex = runCliBody.indexOf('if [[ -n "${ACTIVE_CLI_PID}" || ${#ACTIVE_CLI_TREE_PIDS[@]} -gt 0 || -n "${ACTIVE_CLI_OUTPUT_PATH}" ]]; then');
+    const mktempIndex = runCliBody.indexOf('ACTIVE_CLI_OUTPUT_PATH="$(/usr/bin/mktemp');
+    const fatalTimeoutIndex = runCliBody.indexOf('terminate_active_cli || return "${ACTIVE_CLI_FATAL_EXIT_STATUS}"');
+    const versionOutputSetIndex = runCliBody.indexOf('CLI_VERSION_OUTPUT="${output}"');
+    if (
+      runCliStart < 0 ||
+      runCliEnd < 0 ||
+      staleGuardIndex < 0 ||
+      mktempIndex < 0 ||
+      fatalTimeoutIndex < 0 ||
+      versionOutputSetIndex < 0 ||
+      !(staleGuardIndex < mktempIndex && mktempIndex < fatalTimeoutIndex && fatalTimeoutIndex < versionOutputSetIndex)
+    ) {
+      failures.push(`${scriptPath}: run_cli_version_with_timeout must guard stale active state, preserve fatal cleanup state, and publish CLI_VERSION_OUTPUT directly`);
+    }
+
+    const findHealthyStart = script.indexOf("find_healthy_rawtherapee_cli() {");
+    const determineStart = script.indexOf("determine_install_mode() {", findHealthyStart);
+    const findHealthyBody = script.slice(findHealthyStart, determineStart);
+    const directRunCliIndex = findHealthyBody.indexOf('if run_cli_version_with_timeout "${candidate}" 10; then');
+    const directCliOutputIndex = findHealthyBody.indexOf('is_rawtherapee_version_output "${CLI_VERSION_OUTPUT}"');
+    const fatalRunStatusIndex = findHealthyBody.indexOf('if (( run_status == ACTIVE_CLI_FATAL_EXIT_STATUS )); then');
+    const fatalReturnIndex = findHealthyBody.indexOf('return "${ACTIVE_CLI_FATAL_EXIT_STATUS}"');
+    if (
+      findHealthyStart < 0 ||
+      determineStart < 0 ||
+      directRunCliIndex < 0 ||
+      directCliOutputIndex < 0 ||
+      fatalRunStatusIndex < 0 ||
+      fatalReturnIndex < 0 ||
+      !(directRunCliIndex < directCliOutputIndex && directCliOutputIndex < fatalRunStatusIndex && fatalRunStatusIndex < fatalReturnIndex)
+    ) {
+      failures.push(`${scriptPath}: find_healthy_rawtherapee_cli must call run_cli directly, consume CLI_VERSION_OUTPUT, and propagate fatal cleanup status`);
+    }
+
+    const determineEnd = script.indexOf("extract_rawtherapee_payload() {", determineStart);
+    const determineBody = script.slice(determineStart, determineEnd);
+    const directFindHealthyIndex = determineBody.indexOf('if find_healthy_rawtherapee_cli "${raw_app}" "$@"; then');
+    const determineFatalIndex = determineBody.indexOf('if (( determine_status == ACTIVE_CLI_FATAL_EXIT_STATUS )); then');
+    const determineRepairIndex = determineBody.indexOf('INSTALL_MODE="${MODE_REPAIR}"');
+    if (
+      determineStart < 0 ||
+      determineEnd < 0 ||
+      directFindHealthyIndex < 0 ||
+      determineFatalIndex < 0 ||
+      determineRepairIndex < 0 ||
+      !(directFindHealthyIndex < determineFatalIndex && determineFatalIndex < determineRepairIndex)
+    ) {
+      failures.push(`${scriptPath}: determine_install_mode must call find_healthy directly and return fatal status before considering REPAIR`);
     }
 
     const frameBuilderStart = script.indexOf("build_frame_only_transaction_shell() {");

@@ -29,9 +29,15 @@ CLI_TEMP_PATH=""
 HEALTHY_RAW_CLI=""
 INSTALL_MODE=""
 ACTIVE_MODE=""
+CLI_VERSION_OUTPUT=""
 ACTIVE_CLI_PID=""
-ACTIVE_CLI_PGID=""
+typeset -a ACTIVE_CLI_TREE_PIDS
+ACTIVE_CLI_TREE_PIDS=()
 ACTIVE_CLI_OUTPUT_PATH=""
+readonly ACTIVE_CLI_FATAL_EXIT_STATUS=125
+readonly ACTIVE_CLI_TREE_FREEZE_MAX_PASSES=40
+readonly ACTIVE_CLI_TREE_MAX_NODES=256
+readonly ACTIVE_CLI_TREE_POLL_ATTEMPTS=40
 
 fail() {
   print -u2 -r -- "$1"
@@ -176,38 +182,99 @@ parse_attach_plist() {
   done
 }
 
-process_group_exists() {
-  [[ -n "$1" ]] && /bin/kill -0 -- "-$1" >/dev/null 2>&1
+active_cli_pid_exists() {
+  [[ -n "$1" ]] && /bin/kill -0 "$1" >/dev/null 2>&1
+}
+
+active_cli_tree_record_pid() {
+  local candidate_pid="$1"
+
+  [[ -n "${candidate_pid}" && "${candidate_pid}" == <-> ]] || return 1
+  if array_contains "${candidate_pid}" "${ACTIVE_CLI_TREE_PIDS[@]}"; then
+    return 1
+  fi
+  ACTIVE_CLI_TREE_PIDS+=("${candidate_pid}")
+  return 0
+}
+
+active_cli_tree_has_live_pids() {
+  local tree_pid
+
+  for tree_pid in "${ACTIVE_CLI_TREE_PIDS[@]}"; do
+    if active_cli_pid_exists "${tree_pid}"; then
+      return 0
+    fi
+  done
+  return 1
 }
 
 terminate_active_cli() {
-  local attempt
   local active_pid="${ACTIVE_CLI_PID}"
-  local active_pgid="${ACTIVE_CLI_PGID}"
+  local attempt pass discovered_new=0 stable=0
+  local tree_pid parent_pid child_pid
+  local -a tree_snapshot
 
-  [[ -n "${active_pid}" ]] || return 0
-  if process_group_exists "${active_pgid}"; then
-    /bin/kill -TERM -- "-${active_pgid}" >/dev/null 2>&1 || :
-    for attempt in {1..10}; do
-      process_group_exists "${active_pgid}" || break
-      /bin/sleep 0.1
-    done
-    if process_group_exists "${active_pgid}"; then
-      /bin/kill -KILL -- "-${active_pgid}" >/dev/null 2>&1 || :
+  if [[ -z "${active_pid}" ]]; then
+    if (( ${#ACTIVE_CLI_TREE_PIDS[@]} == 0 )); then
+      return 0
     fi
-  else
-    /bin/kill -TERM "${active_pid}" >/dev/null 2>&1 || :
+    active_pid="${ACTIVE_CLI_TREE_PIDS[1]}"
   fi
+
+  if [[ -n "${ACTIVE_CLI_PID}" && ${#ACTIVE_CLI_TREE_PIDS[@]} == 0 ]]; then
+    ACTIVE_CLI_TREE_PIDS=("${ACTIVE_CLI_PID}")
+  fi
+
+  if active_cli_pid_exists "${active_pid}"; then
+    /bin/kill -STOP "${active_pid}" >/dev/null 2>&1 || {
+      active_cli_pid_exists "${active_pid}" && return 1
+    }
+    for (( pass = 1; pass <= ACTIVE_CLI_TREE_FREEZE_MAX_PASSES; pass++ )); do
+      discovered_new=0
+      tree_snapshot=("${ACTIVE_CLI_TREE_PIDS[@]}")
+      for parent_pid in "${tree_snapshot[@]}"; do
+        while IFS= read -r child_pid; do
+          [[ -n "${child_pid}" && "${child_pid}" == <-> ]] || continue
+          if ! array_contains "${child_pid}" "${ACTIVE_CLI_TREE_PIDS[@]}"; then
+            if /bin/kill -STOP "${child_pid}" >/dev/null 2>&1; then
+              active_cli_tree_record_pid "${child_pid}" || :
+              discovered_new=1
+              if (( ${#ACTIVE_CLI_TREE_PIDS[@]} > ACTIVE_CLI_TREE_MAX_NODES )); then
+                return 1
+              fi
+            fi
+          fi
+        done < <(/usr/bin/pgrep -P "${parent_pid}" 2>/dev/null || :)
+      done
+      if (( ${#ACTIVE_CLI_TREE_PIDS[@]} > ACTIVE_CLI_TREE_MAX_NODES )); then
+        return 1
+      fi
+      if (( discovered_new == 0 )); then
+        stable=1
+        break
+      fi
+    done
+    (( stable == 1 )) || return 1
+  fi
+
+  for (( attempt = ${#ACTIVE_CLI_TREE_PIDS[@]}; attempt >= 1; attempt-- )); do
+    tree_pid="${ACTIVE_CLI_TREE_PIDS[attempt]}"
+    /bin/kill -KILL "${tree_pid}" >/dev/null 2>&1 || :
+  done
   wait "${active_pid}" >/dev/null 2>&1 || :
-  for attempt in {1..20}; do
-    process_group_exists "${active_pgid}" || break
+  for (( attempt = 1; attempt <= ACTIVE_CLI_TREE_POLL_ATTEMPTS; attempt++ )); do
+    if ! active_cli_tree_has_live_pids; then
+      ACTIVE_CLI_PID=""
+      ACTIVE_CLI_TREE_PIDS=()
+      return 0
+    fi
     /bin/sleep 0.1
   done
-  if process_group_exists "${active_pgid}"; then
+  if active_cli_tree_has_live_pids; then
     return 1
   fi
   ACTIVE_CLI_PID=""
-  ACTIVE_CLI_PGID=""
+  ACTIVE_CLI_TREE_PIDS=()
 }
 
 pause_if_interactive() {
@@ -218,22 +285,30 @@ pause_if_interactive() {
 }
 
 cleanup() {
-  local index device cleanup_failed=0
+  local index device cleanup_failed=0 active_cli_cleanup_ok=0
   local -a remaining_devices
 
   remaining_devices=()
 
-  if ! terminate_active_cli; then
+  if terminate_active_cli; then
+    active_cli_cleanup_ok=1
+  else
     cleanup_failed=1
   fi
-  if [[ -n "${ACTIVE_CLI_OUTPUT_PATH}" && -e "${ACTIVE_CLI_OUTPUT_PATH}" ]]; then
-    if /bin/rm -f -- "${ACTIVE_CLI_OUTPUT_PATH}" >/dev/null 2>&1; then
-      ACTIVE_CLI_OUTPUT_PATH=""
+  if (( active_cli_cleanup_ok == 1 )); then
+    if [[ -n "${ACTIVE_CLI_OUTPUT_PATH}" && -e "${ACTIVE_CLI_OUTPUT_PATH}" ]]; then
+      if /bin/rm -f -- "${ACTIVE_CLI_OUTPUT_PATH}" >/dev/null 2>&1; then
+        ACTIVE_CLI_PID=""
+        ACTIVE_CLI_TREE_PIDS=()
+        ACTIVE_CLI_OUTPUT_PATH=""
+      else
+        cleanup_failed=1
+      fi
     else
-      cleanup_failed=1
+      ACTIVE_CLI_PID=""
+      ACTIVE_CLI_TREE_PIDS=()
+      ACTIVE_CLI_OUTPUT_PATH=""
     fi
-  else
-    ACTIVE_CLI_OUTPUT_PATH=""
   fi
 
   if [[ -n "${CLI_TEMP_PATH}" && -e "${CLI_TEMP_PATH}" ]]; then
@@ -257,14 +332,16 @@ cleanup() {
   done
   MOUNTED_DEVICES=("${remaining_devices[@]}")
 
-  if [[ -n "${WORK_DIR}" && -d "${WORK_DIR}" ]]; then
-    if /bin/rm -rf -- "${WORK_DIR}" >/dev/null 2>&1; then
-      WORK_DIR=""
+  if (( active_cli_cleanup_ok == 1 )); then
+    if [[ -n "${WORK_DIR}" && -d "${WORK_DIR}" ]]; then
+      if /bin/rm -rf -- "${WORK_DIR}" >/dev/null 2>&1; then
+        WORK_DIR=""
+      else
+        cleanup_failed=1
+      fi
     else
-      cleanup_failed=1
+      WORK_DIR=""
     fi
-  else
-    WORK_DIR=""
   fi
   ATTACHED_MOUNT_POINT=""
   return "${cleanup_failed}"
@@ -317,25 +394,29 @@ verify_package_contract() {
 }
 
 run_cli_version_with_timeout() {
-  setopt localoptions monitor
   local cli="$1"
   local seconds="$2"
   local temp_root="${WORK_DIR:-${TMPDIR:-/tmp}}"
   local output exit_status=0 elapsed=0
   local max_ticks=$(( seconds * 10 ))
 
+  if [[ -n "${ACTIVE_CLI_PID}" || ${#ACTIVE_CLI_TREE_PIDS[@]} -gt 0 || -n "${ACTIVE_CLI_OUTPUT_PATH}" ]]; then
+    return "${ACTIVE_CLI_FATAL_EXIT_STATUS}"
+  fi
+
+  CLI_VERSION_OUTPUT=""
   ACTIVE_CLI_OUTPUT_PATH="$(/usr/bin/mktemp "${temp_root}/framecull-rawtherapee-version.XXXXXX")"
   "${cli}" -v >"${ACTIVE_CLI_OUTPUT_PATH}" 2>&1 &
   ACTIVE_CLI_PID=$!
-  ACTIVE_CLI_PGID="${ACTIVE_CLI_PID}"
+  ACTIVE_CLI_TREE_PIDS=("${ACTIVE_CLI_PID}")
 
   while /bin/kill -0 "${ACTIVE_CLI_PID}" >/dev/null 2>&1; do
     if (( elapsed >= max_ticks )); then
-      terminate_active_cli || return 1
+      terminate_active_cli || return "${ACTIVE_CLI_FATAL_EXIT_STATUS}"
       output="$(/bin/cat "${ACTIVE_CLI_OUTPUT_PATH}")"
+      CLI_VERSION_OUTPUT="${output}"
       /bin/rm -f -- "${ACTIVE_CLI_OUTPUT_PATH}"
       ACTIVE_CLI_OUTPUT_PATH=""
-      [[ -z "${output}" ]] || print -r -- "${output}"
       return 124
     fi
     /bin/sleep 0.1
@@ -347,16 +428,12 @@ run_cli_version_with_timeout() {
   else
     exit_status=$?
   fi
-  if process_group_exists "${ACTIVE_CLI_PGID}"; then
-    terminate_active_cli || return 1
-  else
-    ACTIVE_CLI_PID=""
-    ACTIVE_CLI_PGID=""
-  fi
+  ACTIVE_CLI_PID=""
+  ACTIVE_CLI_TREE_PIDS=()
   output="$(/bin/cat "${ACTIVE_CLI_OUTPUT_PATH}")"
+  CLI_VERSION_OUTPUT="${output}"
   /bin/rm -f -- "${ACTIVE_CLI_OUTPUT_PATH}"
   ACTIVE_CLI_OUTPUT_PATH=""
-  print -r -- "${output}"
   return "${exit_status}"
 }
 
@@ -372,16 +449,27 @@ is_rawtherapee_version_output() {
 
 find_healthy_rawtherapee_cli() {
   local app="$1"
-  local candidate version_output
+  local candidate run_status
   shift
 
+  HEALTHY_RAW_CLI=""
   [[ -d "${app}" ]] || return 1
   for candidate in "$@"; do
     [[ -x "${candidate}" ]] || continue
-    if version_output="$(run_cli_version_with_timeout "${candidate}" 10)" &&
-      is_rawtherapee_version_output "${version_output}"; then
-      print -r -- "${candidate}"
-      return 0
+    if run_cli_version_with_timeout "${candidate}" 10; then
+      run_status=0
+    else
+      run_status=$?
+    fi
+    if (( run_status == 0 )); then
+      if is_rawtherapee_version_output "${CLI_VERSION_OUTPUT}"; then
+        HEALTHY_RAW_CLI="${candidate}"
+        return 0
+      fi
+      continue
+    fi
+    if (( run_status == ACTIVE_CLI_FATAL_EXIT_STATUS )); then
+      return "${ACTIVE_CLI_FATAL_EXIT_STATUS}"
     fi
   done
   return 1
@@ -389,17 +477,26 @@ find_healthy_rawtherapee_cli() {
 
 determine_install_mode() {
   local raw_app="$1"
-  local healthy_cli=""
+  local determine_status=0
   shift
 
-  if healthy_cli="$(find_healthy_rawtherapee_cli "${raw_app}" "$@")"; then
-    HEALTHY_RAW_CLI="${healthy_cli}"
+  HEALTHY_RAW_CLI=""
+  INSTALL_MODE=""
+  if find_healthy_rawtherapee_cli "${raw_app}" "$@"; then
+    determine_status=0
+  else
+    determine_status=$?
+  fi
+  if (( determine_status == 0 )); then
     INSTALL_MODE="${MODE_UPDATE}"
   else
-    HEALTHY_RAW_CLI=""
+    if (( determine_status == ACTIVE_CLI_FATAL_EXIT_STATUS )); then
+      return "${determine_status}"
+    fi
     INSTALL_MODE="${MODE_REPAIR}"
   fi
   print -r -- "${INSTALL_MODE}"
+  return 0
 }
 
 extract_rawtherapee_payload() {
@@ -738,7 +835,7 @@ install_frame_only() {
 }
 
 repair_rawtherapee_and_install_frame() {
-  local frame_mount raw_mount frame_source_app raw_source_app version_output
+  local frame_mount raw_mount frame_source_app raw_source_app
 
   print -r -- "RawTherapee 缺失或损坏：修复 RawTherapee 并更新 FrameCull AI Pro。"
   print -r -- "RawTherapee is missing or unhealthy: repairing it and updating FrameCull AI Pro."
@@ -767,12 +864,12 @@ repair_rawtherapee_and_install_frame() {
     "用户 RawTherapee CLI 安装失败。" \
     "Managed RawTherapee CLI installation failed."
 
-  if ! version_output="$(run_cli_version_with_timeout "${MANAGED_CLI}" 10)"; then
+  if ! run_cli_version_with_timeout "${MANAGED_CLI}" 10; then
     fail \
       "安装后的 RawTherapee CLI 验证失败。" \
       "Installed RawTherapee CLI verification failed."
   fi
-  is_rawtherapee_version_output "${version_output}" || fail \
+  is_rawtherapee_version_output "${CLI_VERSION_OUTPUT}" || fail \
     "安装后的 CLI 未返回 RawTherapee 版本。" \
     "Installed CLI did not report a RawTherapee version."
   if ! verify_frame_signature "${FRAME_APP}"; then

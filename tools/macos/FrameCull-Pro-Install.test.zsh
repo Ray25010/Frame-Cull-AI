@@ -13,6 +13,7 @@ typeset -r PRODUCTION_MAIN="${functions[main]}"
 typeset -r PRODUCTION_ATTACH_DMG_READONLY="${functions[attach_dmg_readonly]}"
 typeset -r PRODUCTION_RUN_CLI_VERSION_WITH_TIMEOUT="${functions[run_cli_version_with_timeout]}"
 typeset -r PRODUCTION_CLEANUP="${functions[cleanup]}"
+typeset -r PRODUCTION_TERMINATE_ACTIVE_CLI="${functions[terminate_active_cli]}"
 
 TEST_ROOT="$(/usr/bin/mktemp -d)"
 trap '/bin/rm -rf -- "${TEST_ROOT}"' EXIT
@@ -231,14 +232,18 @@ assert_fixture_mode() {
   local managed_cli="${TEST_ROOT}/case/managed/rawtherapee-cli"
   local local_cli="${TEST_ROOT}/case/usr-local/rawtherapee-cli"
   local brew_cli="${TEST_ROOT}/case/homebrew/rawtherapee-cli"
-  local actual
 
-  actual="$(determine_install_mode \
+  HEALTHY_RAW_CLI=""
+  INSTALL_MODE=""
+  if ! determine_install_mode \
     "${raw_app}" \
     "${managed_cli}" \
     "${local_cli}" \
-    "${brew_cli}")"
-  assert_equal "${expected}" "${actual}" "${label}"
+    "${brew_cli}" >/dev/null; then
+    print -u2 -r -- "${label}: determine_install_mode unexpectedly failed"
+    return 1
+  fi
+  assert_equal "${expected}" "${INSTALL_MODE}" "${label}"
 }
 
 reset_fixture
@@ -284,6 +289,84 @@ reset_fixture
 /bin/mkdir -p "${TEST_ROOT}/case/Applications/RawTherapee.app"
 make_cli "${TEST_ROOT}/case/managed/rawtherapee-cli" misleading-output
 assert_fixture_mode "${MODE_REPAIR}" "CLI exit zero with misleading RawTherapee error text"
+
+functions[run_cli_version_with_timeout]="${PRODUCTION_RUN_CLI_VERSION_WITH_TIMEOUT}"
+reset_fixture
+stale_guard_cli="${TEST_ROOT}/case/stale-guard-cli"
+make_cli "${stale_guard_cli}" valid
+WORK_DIR="${TEST_ROOT}/case/stale-guard-work"
+/bin/mkdir -p "${WORK_DIR}"
+ACTIVE_CLI_PID="55101"
+ACTIVE_CLI_TREE_PIDS=("55101" "55102")
+ACTIVE_CLI_OUTPUT_PATH="${WORK_DIR}/framecull-rawtherapee-version.stale"
+/usr/bin/printf '%s\n' "stale-output" > "${ACTIVE_CLI_OUTPUT_PATH}"
+typeset -gi stale_guard_status=0
+if run_cli_version_with_timeout "${stale_guard_cli}" 1 >/dev/null; then
+  print -u2 -r -- "stale CLI guard test: expected fatal status"
+  return 1
+else
+  stale_guard_status=$?
+fi
+assert_equal "${ACTIVE_CLI_FATAL_EXIT_STATUS}" "${stale_guard_status}" "stale CLI guard exit code"
+assert_equal "55101" "${ACTIVE_CLI_PID}" "stale CLI guard preserves active CLI PID"
+assert_equal "2" "${#ACTIVE_CLI_TREE_PIDS[@]}" "stale CLI guard preserves active CLI tree size"
+assert_equal "${WORK_DIR}/framecull-rawtherapee-version.stale" "${ACTIVE_CLI_OUTPUT_PATH}" "stale CLI guard preserves output path"
+assert_path_exists "${ACTIVE_CLI_OUTPUT_PATH}" "stale CLI guard preserves output file"
+ACTIVE_CLI_PID=""
+ACTIVE_CLI_TREE_PIDS=()
+ACTIVE_CLI_OUTPUT_PATH=""
+CLI_VERSION_OUTPUT=""
+
+run_cli_version_with_timeout() {
+  FRAMECULL_TEST_FATAL_RUN_CLI_CALLS=$((FRAMECULL_TEST_FATAL_RUN_CLI_CALLS + 1))
+  if (( FRAMECULL_TEST_FATAL_RUN_CLI_CALLS == 1 )); then
+    ACTIVE_CLI_PID="66101"
+    ACTIVE_CLI_TREE_PIDS=("66101" "66102")
+    ACTIVE_CLI_OUTPUT_PATH="${FRAMECULL_TEST_FATAL_OUTPUT_PATH}"
+    CLI_VERSION_OUTPUT=""
+    /usr/bin/printf "%s\n" "fatal-output" > "${ACTIVE_CLI_OUTPUT_PATH}"
+    return "${ACTIVE_CLI_FATAL_EXIT_STATUS}"
+  fi
+  FRAMECULL_TEST_FATAL_SECOND_CALLS=$((FRAMECULL_TEST_FATAL_SECOND_CALLS + 1))
+  return 0
+}
+reset_fixture
+fatal_raw_app="${TEST_ROOT}/case/Applications/RawTherapee.app"
+fatal_first_cli="${TEST_ROOT}/case/managed/rawtherapee-cli"
+fatal_second_cli="${TEST_ROOT}/case/usr-local/rawtherapee-cli"
+/bin/mkdir -p "${fatal_raw_app}"
+make_cli "${fatal_first_cli}" valid
+make_cli "${fatal_second_cli}" valid
+WORK_DIR="${TEST_ROOT}/case/fatal-determine-work"
+/bin/mkdir -p "${WORK_DIR}"
+FRAMECULL_TEST_FATAL_OUTPUT_PATH="${WORK_DIR}/framecull-rawtherapee-version.fatal"
+typeset -gi FRAMECULL_TEST_FATAL_RUN_CLI_CALLS=0
+typeset -gi FRAMECULL_TEST_FATAL_SECOND_CALLS=0
+HEALTHY_RAW_CLI=""
+INSTALL_MODE=""
+CLI_VERSION_OUTPUT=""
+typeset -gi fatal_determine_status=0
+if determine_install_mode "${fatal_raw_app}" "${fatal_first_cli}" "${fatal_second_cli}" >/dev/null; then
+  print -u2 -r -- "fatal determine test: expected determine_install_mode to fail"
+  return 1
+else
+  fatal_determine_status=$?
+fi
+assert_equal "${ACTIVE_CLI_FATAL_EXIT_STATUS}" "${fatal_determine_status}" "fatal determine exit code"
+assert_equal "1" "${FRAMECULL_TEST_FATAL_RUN_CLI_CALLS}" "fatal determine stops after first probe"
+assert_equal "0" "${FRAMECULL_TEST_FATAL_SECOND_CALLS}" "fatal determine must not probe second candidate"
+assert_equal "" "${HEALTHY_RAW_CLI}" "fatal determine must not set healthy CLI"
+assert_equal "" "${INSTALL_MODE}" "fatal determine must not fall back to REPAIR"
+assert_equal "66101" "${ACTIVE_CLI_PID}" "fatal determine preserves active CLI PID"
+assert_equal "2" "${#ACTIVE_CLI_TREE_PIDS[@]}" "fatal determine preserves active CLI tree size"
+assert_equal "${WORK_DIR}/framecull-rawtherapee-version.fatal" "${ACTIVE_CLI_OUTPUT_PATH}" "fatal determine preserves output path"
+assert_path_exists "${ACTIVE_CLI_OUTPUT_PATH}" "fatal determine preserves output file"
+assert_path_exists "${WORK_DIR}" "fatal determine preserves work dir"
+functions[run_cli_version_with_timeout]="${PRODUCTION_RUN_CLI_VERSION_WITH_TIMEOUT}"
+ACTIVE_CLI_PID=""
+ACTIVE_CLI_TREE_PIDS=()
+ACTIVE_CLI_OUTPUT_PATH=""
+CLI_VERSION_OUTPUT=""
 
 is_rawtherapee_version_output 'RawTherapee, version 5'
 is_rawtherapee_version_output 'RawTherapee, version 5.12'
@@ -900,13 +983,42 @@ assert_not_contains "${PRODUCTION_INSTALL_FRAME_AND_RAW_PRIVILEGED}" "FRAMECULL_
 assert_not_contains "${PRODUCTION_INSTALL_FRAME_ONLY_PRIVILEGED}" "restoreFrame" "Frame-only privileged install must not depend on restoreFrame flag"
 assert_not_contains "${PRODUCTION_INSTALL_FRAME_AND_RAW_PRIVILEGED}" "restoreRaw" "Combined privileged install must not depend on restoreRaw flag"
 
+functions[cleanup]="${PRODUCTION_CLEANUP}"
+functions[terminate_active_cli]='return 1'
+reset_fixture
+WORK_DIR="${TEST_ROOT}/case/cleanup-failure-work"
+/bin/mkdir -p "${WORK_DIR}"
+ACTIVE_CLI_PID="98765"
+ACTIVE_CLI_TREE_PIDS=("98765" "98766")
+ACTIVE_CLI_OUTPUT_PATH="${WORK_DIR}/framecull-rawtherapee-version.failure"
+/usr/bin/printf '%s\n' "still-running" > "${ACTIVE_CLI_OUTPUT_PATH}"
+typeset -gi cleanup_failure_exit=0
+if cleanup; then
+  print -u2 -r -- "cleanup failure preservation test: expected cleanup to fail"
+  return 1
+else
+  cleanup_failure_exit=$?
+fi
+assert_equal "1" "${cleanup_failure_exit}" "cleanup failure exit code"
+assert_equal "98765" "${ACTIVE_CLI_PID}" "cleanup failure preserves active CLI PID"
+assert_equal "2" "${#ACTIVE_CLI_TREE_PIDS[@]}" "cleanup failure preserves active CLI tree size"
+assert_equal "98765" "${ACTIVE_CLI_TREE_PIDS[1]}" "cleanup failure preserves active CLI root"
+assert_equal "98766" "${ACTIVE_CLI_TREE_PIDS[2]}" "cleanup failure preserves active CLI child"
+assert_equal "${WORK_DIR}/framecull-rawtherapee-version.failure" "${ACTIVE_CLI_OUTPUT_PATH}" "cleanup failure preserves output path"
+assert_path_exists "${ACTIVE_CLI_OUTPUT_PATH}" "cleanup failure preserves output file"
+assert_path_exists "${WORK_DIR}" "cleanup failure preserves work dir"
+ACTIVE_CLI_PID=""
+ACTIVE_CLI_TREE_PIDS=()
+ACTIVE_CLI_OUTPUT_PATH=""
+WORK_DIR=""
+
+functions[setopt]='return 1'
+functions[terminate_active_cli]="${PRODUCTION_TERMINATE_ACTIVE_CLI}"
 functions[run_cli_version_with_timeout]="${PRODUCTION_RUN_CLI_VERSION_WITH_TIMEOUT}"
 functions[cleanup]="${PRODUCTION_CLEANUP}"
 reset_fixture
 timeout_cli="${TEST_ROOT}/case/timeout-cli"
 timeout_child="${TEST_ROOT}/case/timeout-child"
-timeout_grandchild="${TEST_ROOT}/case/timeout-grandchild"
-timeout_late="${TEST_ROOT}/case/timeout-late"
 pid_dir="${TEST_ROOT}/case/pids"
 /bin/mkdir -p "${pid_dir}"
 /usr/bin/printf '%s\n' \
@@ -914,31 +1026,25 @@ pid_dir="${TEST_ROOT}/case/pids"
   'set -euo pipefail' \
   '/usr/bin/printf "%s\n" "$$" > "${FRAMECULL_TEST_PID_DIR:?}/wrapper.pid"' \
   '"${FRAMECULL_TEST_CHILD:?}" &' \
-  '/usr/bin/printf "%s\n" "$!" > "${FRAMECULL_TEST_PID_DIR:?}/spawned.pid"' \
   'wait' > "${timeout_cli}"
 /usr/bin/printf '%s\n' \
   '#!/bin/zsh' \
   'set -euo pipefail' \
   '/usr/bin/printf "%s\n" "$$" > "${FRAMECULL_TEST_PID_DIR:?}/child.pid"' \
-  'trap '\''"${FRAMECULL_TEST_LATE:?}" &'\'' TERM' \
-  '"${FRAMECULL_TEST_GRANDCHILD:?}" &' \
-  'wait' > "${timeout_child}"
-/usr/bin/printf '%s\n' \
-  '#!/bin/zsh' \
-  'set -euo pipefail' \
-  '/usr/bin/printf "%s\n" "$$" > "${FRAMECULL_TEST_PID_DIR:?}/grandchild.pid"' \
-  'trap "" TERM' \
-  '/bin/sleep 30' > "${timeout_grandchild}"
-/usr/bin/printf '%s\n' \
-  '#!/bin/zsh' \
-  'set -euo pipefail' \
-  '/usr/bin/printf "%s\n" "$$" > "${FRAMECULL_TEST_PID_DIR:?}/late.pid"' \
-  'exec /bin/sleep 30' > "${timeout_late}"
-/bin/chmod 755 "${timeout_cli}" "${timeout_child}" "${timeout_grandchild}" "${timeout_late}"
+  'typeset -i spawn_count=0' \
+  'while true; do' \
+  '  /bin/sleep 30 &' \
+  '  spawn_pid=$!' \
+  '  spawn_count=$((spawn_count + 1))' \
+  '  if (( spawn_count == 1 )); then' \
+  '    /usr/bin/printf "%s\n" "${spawn_pid}" > "${FRAMECULL_TEST_PID_DIR:?}/grandchild.pid"' \
+  '  fi' \
+  '  /usr/bin/printf "%s\n" "${spawn_pid}" > "${FRAMECULL_TEST_PID_DIR:?}/late.pid"' \
+  '  /bin/sleep 0.02' \
+  'done' > "${timeout_child}"
+/bin/chmod 755 "${timeout_cli}" "${timeout_child}"
 export FRAMECULL_TEST_PID_DIR="${pid_dir}"
 export FRAMECULL_TEST_CHILD="${timeout_child}"
-export FRAMECULL_TEST_GRANDCHILD="${timeout_grandchild}"
-export FRAMECULL_TEST_LATE="${timeout_late}"
 WORK_DIR="${TEST_ROOT}/case/work"
 /bin/mkdir -p "${WORK_DIR}"
 typeset -gi timeout_exit=0
@@ -949,8 +1055,8 @@ else
   timeout_exit=$?
 fi
 assert_equal "124" "${timeout_exit}" "timeout exit code"
-for attempt in {1..20}; do
-  [[ -f "${pid_dir}/late.pid" ]] && break
+for attempt in {1..40}; do
+  [[ -f "${pid_dir}/grandchild.pid" && -f "${pid_dir}/late.pid" ]] && break
   /bin/sleep 0.05
 done
 for pid_file in wrapper.pid child.pid grandchild.pid late.pid; do
@@ -962,7 +1068,7 @@ for pid_file in wrapper.pid child.pid grandchild.pid late.pid; do
   assert_process_stopped "timeout process tree ${pid_file}" "${process_id}"
 done
 assert_equal "" "${ACTIVE_CLI_PID:-}" "timeout active CLI PID cleanup"
-assert_equal "" "${ACTIVE_CLI_PGID:-}" "timeout active CLI PGID cleanup"
+assert_equal "0" "${#ACTIVE_CLI_TREE_PIDS[@]}" "timeout active CLI tree cleanup"
 assert_equal "" "${ACTIVE_CLI_OUTPUT_PATH:-}" "timeout output path cleanup"
 typeset -a remaining_cli_outputs
 remaining_cli_outputs=("${WORK_DIR}"/framecull-rawtherapee-version.*(N))
