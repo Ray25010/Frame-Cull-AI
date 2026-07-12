@@ -71,7 +71,7 @@ Windows内测版本：
 
 | 项目 | Flash Windows | Flash macOS | Pro Windows |
 | --- | --- | --- | --- |
-| 系统 | Windows 10 / 11 64 位 | 测试建议 macOS 12 Monterey 或更高，推荐 macOS 13 及以上 | Windows 10 / 11 64 位，推荐 Windows 11 |
+| 系统 | Windows 10 / 11 64 位 | 建议 macOS 12 Monterey 或更高，推荐 macOS 13 及以上 | Windows 10 / 11 64 位，推荐 Windows 11 |
 | 架构 | x64 | Apple Silicon 使用 arm64 包；Intel Mac 使用 x64 包 | x64 |
 | CPU | 4 核起，推荐 8 核或更高 | Apple Silicon，或 4 核及以上 Intel 处理器 | 8 核起，推荐 12 核或更高 |
 | 内存 | 8 GB 起，推荐 16 GB | 8 GB 起，推荐 16 GB | 16 GB 起，推荐 32 GB 或更高 |
