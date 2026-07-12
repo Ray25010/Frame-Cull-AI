@@ -148,15 +148,13 @@ Choose Flash if you mainly review JPGs or embedded RAW previews and care most ab
 
 ### 📦 Download
 
-Latest beta release:  
-[FrameCull AI 0.1.6 Beta 2 Release](https://github.com/Ray25010/Frame-Cull-AI/releases/tag/v0.1.6-beta.2)
+Windows release:  
 
 - [Download Flash for Windows](https://github.com/Ray25010/Frame-Cull-AI/releases/download/v0.1.6-beta.2/FrameCull.AI.Flash_0.1.6-beta.2_x64-setup.exe)
 - [Download Pro for Windows](https://github.com/Ray25010/Frame-Cull-AI/releases/download/v0.1.6-beta.2/FrameCull.AI.Pro_0.1.6-beta.2_x64-setup.exe)
 
 #### macOS Flash 0.1.6 test build
 
-[View the macOS Flash prerelease](https://github.com/Ray25010/Frame-Cull-AI/releases/tag/macos-test-0.1.6-run-29097861619)
 
 - [Download arm64 for Apple Silicon (M1 / M2 / M3 / M4 and later)](https://github.com/Ray25010/Frame-Cull-AI/releases/download/macos-test-0.1.6-run-29097861619/FrameCull-macOS-arm64.zip)
 - [Download x64 for Intel Macs](https://github.com/Ray25010/Frame-Cull-AI/releases/download/macos-test-0.1.6-run-29097861619/FrameCull-macOS-x64.zip)
@@ -165,8 +163,6 @@ Latest beta release:
 
 ### 📚 Docs
 
-- [Flash edition Chinese guide](docs/editions/README_FLASH_CN.md)
-- [Pro edition Chinese guide](docs/editions/README_PRO_CN.md)
 - [FrameCull AI Flash v0.1.6 guide on WPS Docs](https://www.kdocs.cn/l/ckvgLtjq13lO)
 - [FrameCull AI Pro v0.1.6 guide on WPS Docs](https://www.kdocs.cn/l/ck6O3N1pAKlA)
 - [Bundled macOS Flash installation guide](tools/macos/README-macOS-first-launch.txt)
