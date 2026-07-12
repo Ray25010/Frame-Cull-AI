@@ -4,6 +4,7 @@ set -euo pipefail
 readonly MODE_VERIFY_ONLY="VERIFY_ONLY"
 readonly MODE_UPDATE="UPDATE_FRAMECULL_ONLY"
 readonly MODE_REPAIR="REPAIR_RAWTHERAPEE_AND_UPDATE_FRAMECULL"
+readonly RAWTHERAPEE_VERSION_HELP_EXIT_STATUS=255
 readonly FRAME_APP="/Applications/FrameCull AI Pro.app"
 readonly RAW_APP="/Applications/RawTherapee.app"
 readonly RAW_ARCHIVE_NAME="RawTherapee_macOS_15.4_Universal_5.12.zip"
@@ -490,9 +491,17 @@ is_rawtherapee_version_output() {
   local line
 
   for line in "${(@f)output}"; do
-    [[ "${line}" =~ '^RawTherapee, version [0-9]+([.][0-9]+)*([-+][[:alnum:]._-]+)?$' ]] && return 0
+    [[ "${line}" =~ '^RawTherapee, version [0-9]+([.][0-9]+)*([-+][[:alnum:]._-]+)?(, command line[.])?$' ]] && return 0
   done
   return 1
+}
+
+rawtherapee_version_probe_is_healthy() {
+  local exit_status="$1"
+  local output="$2"
+
+  (( exit_status == 0 || exit_status == RAWTHERAPEE_VERSION_HELP_EXIT_STATUS )) || return 1
+  is_rawtherapee_version_output "${output}"
 }
 
 find_healthy_rawtherapee_cli() {
@@ -509,15 +518,12 @@ find_healthy_rawtherapee_cli() {
     else
       run_status=$?
     fi
-    if (( run_status == 0 )); then
-      if is_rawtherapee_version_output "${CLI_VERSION_OUTPUT}"; then
-        HEALTHY_RAW_CLI="${candidate}"
-        return 0
-      fi
-      continue
-    fi
     if (( run_status == ACTIVE_CLI_FATAL_EXIT_STATUS )); then
       return "${ACTIVE_CLI_FATAL_EXIT_STATUS}"
+    fi
+    if rawtherapee_version_probe_is_healthy "${run_status}" "${CLI_VERSION_OUTPUT}"; then
+      HEALTHY_RAW_CLI="${candidate}"
+      return 0
     fi
   done
   return 1
@@ -905,6 +911,7 @@ install_frame_only() {
 
 repair_rawtherapee_and_install_frame() {
   local frame_mount raw_mount frame_source_app raw_source_app
+  local cli_status=0
 
   print -r -- "RawTherapee 缺失或损坏：修复 RawTherapee 并更新 FrameCull AI Pro。"
   print -r -- "RawTherapee is missing or unhealthy: repairing it and updating FrameCull AI Pro."
@@ -933,14 +940,18 @@ repair_rawtherapee_and_install_frame() {
     "用户 RawTherapee CLI 安装失败。" \
     "Managed RawTherapee CLI installation failed."
 
-  if ! run_cli_version_with_timeout "${MANAGED_CLI}" 10; then
+  if run_cli_version_with_timeout "${MANAGED_CLI}" 10; then
+    cli_status=0
+  else
+    cli_status=$?
+  fi
+  if ! rawtherapee_version_probe_is_healthy "${cli_status}" "${CLI_VERSION_OUTPUT}"; then
+    print -u2 -r -- "RawTherapee CLI exit status: ${cli_status}"
+    [[ -z "${CLI_VERSION_OUTPUT}" ]] || print -u2 -r -- "${CLI_VERSION_OUTPUT}"
     fail \
       "安装后的 RawTherapee CLI 验证失败。" \
       "Installed RawTherapee CLI verification failed."
   fi
-  is_rawtherapee_version_output "${CLI_VERSION_OUTPUT}" || fail \
-    "安装后的 CLI 未返回 RawTherapee 版本。" \
-    "Installed CLI did not report a RawTherapee version."
   if ! verify_frame_signature "${FRAME_APP}"; then
     fail \
       "FrameCull AI Pro 签名验证失败。" \

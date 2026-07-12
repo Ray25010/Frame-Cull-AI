@@ -129,6 +129,19 @@ make_cli() {
         '#!/bin/zsh' \
         'print -r -- "RawTherapee failed to initialize its version service"' > "${path}"
       ;;
+    official-version)
+      /usr/bin/printf '%s\n' \
+        '#!/bin/zsh' \
+        'print -r -- "RawTherapee, version 5.12, command line."' \
+        'print -r -- "  An advanced, cross-platform program for developing raw photos."' \
+        'exit 255' > "${path}"
+      ;;
+    spoofed-version-nonzero)
+      /usr/bin/printf '%s\n' \
+        '#!/bin/zsh' \
+        'print -r -- "RawTherapee, version 5.12"' \
+        'exit 3' > "${path}"
+      ;;
     *)
       print -u2 -r -- "unknown fake CLI behavior: ${behavior}"
       return 1
@@ -290,6 +303,16 @@ reset_fixture
 make_cli "${TEST_ROOT}/case/managed/rawtherapee-cli" misleading-output
 assert_fixture_mode "${MODE_REPAIR}" "CLI exit zero with misleading RawTherapee error text"
 
+reset_fixture
+/bin/mkdir -p "${TEST_ROOT}/case/Applications/RawTherapee.app"
+make_cli "${TEST_ROOT}/case/managed/rawtherapee-cli" official-version
+assert_fixture_mode "${MODE_UPDATE}" "official macOS CLI version exits 255"
+
+reset_fixture
+/bin/mkdir -p "${TEST_ROOT}/case/Applications/RawTherapee.app"
+make_cli "${TEST_ROOT}/case/managed/rawtherapee-cli" spoofed-version-nonzero
+assert_fixture_mode "${MODE_REPAIR}" "unexpected nonzero status with version text"
+
 functions[run_cli_version_with_timeout]="${PRODUCTION_RUN_CLI_VERSION_WITH_TIMEOUT}"
 reset_fixture
 stale_guard_cli="${TEST_ROOT}/case/stale-guard-cli"
@@ -372,6 +395,7 @@ is_rawtherapee_version_output 'RawTherapee, version 5'
 is_rawtherapee_version_output 'RawTherapee, version 5.12'
 is_rawtherapee_version_output 'RawTherapee, version 5.12-test'
 is_rawtherapee_version_output 'RawTherapee, version 6.0.1+foo'
+is_rawtherapee_version_output 'RawTherapee, version 5.12, command line.'
 assert_false "RawTherapee initialization failure must not be a version" \
   is_rawtherapee_version_output 'RawTherapee, version 5 failed initialization'
 

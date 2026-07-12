@@ -73,6 +73,8 @@ if (mode === "--source") {
     "/bin/kill -KILL",
     'wait "${active_pid}"',
     "is_rawtherapee_version_output",
+    "RAWTHERAPEE_VERSION_HELP_EXIT_STATUS",
+    "rawtherapee_version_probe_is_healthy",
     "RawTherapee, version ",
     "open_frame_app",
     "/usr/bin/env -i /bin/sh -c",
@@ -309,19 +311,34 @@ if (mode === "--source") {
     const determineStart = script.indexOf("determine_install_mode() {", findHealthyStart);
     const findHealthyBody = script.slice(findHealthyStart, determineStart);
     const directRunCliIndex = findHealthyBody.indexOf('if run_cli_version_with_timeout "${candidate}" 10; then');
-    const directCliOutputIndex = findHealthyBody.indexOf('is_rawtherapee_version_output "${CLI_VERSION_OUTPUT}"');
     const fatalRunStatusIndex = findHealthyBody.indexOf('if (( run_status == ACTIVE_CLI_FATAL_EXIT_STATUS )); then');
     const fatalReturnIndex = findHealthyBody.indexOf('return "${ACTIVE_CLI_FATAL_EXIT_STATUS}"');
+    const healthyProbeIndex = findHealthyBody.indexOf('if rawtherapee_version_probe_is_healthy "${run_status}" "${CLI_VERSION_OUTPUT}"; then');
     if (
       findHealthyStart < 0 ||
       determineStart < 0 ||
       directRunCliIndex < 0 ||
-      directCliOutputIndex < 0 ||
       fatalRunStatusIndex < 0 ||
       fatalReturnIndex < 0 ||
-      !(directRunCliIndex < directCliOutputIndex && directCliOutputIndex < fatalRunStatusIndex && fatalRunStatusIndex < fatalReturnIndex)
+      healthyProbeIndex < 0 ||
+      !(directRunCliIndex < fatalRunStatusIndex && fatalRunStatusIndex < fatalReturnIndex && fatalReturnIndex < healthyProbeIndex)
     ) {
-      failures.push(`${scriptPath}: find_healthy_rawtherapee_cli must call run_cli directly, consume CLI_VERSION_OUTPUT, and propagate fatal cleanup status`);
+      failures.push(`${scriptPath}: find_healthy_rawtherapee_cli must propagate fatal cleanup status before accepting the official version-help exit policy`);
+    }
+
+    const repairStart = script.indexOf("repair_rawtherapee_and_install_frame() {");
+    const repairEnd = script.indexOf("run_install_for_mode() {", repairStart);
+    const repairBody = script.slice(repairStart, repairEnd);
+    const repairRunCliIndex = repairBody.indexOf('if run_cli_version_with_timeout "${MANAGED_CLI}" 10; then');
+    const repairProbeIndex = repairBody.indexOf('if ! rawtherapee_version_probe_is_healthy "${cli_status}" "${CLI_VERSION_OUTPUT}"; then');
+    if (
+      repairStart < 0 ||
+      repairEnd < 0 ||
+      repairRunCliIndex < 0 ||
+      repairProbeIndex < 0 ||
+      !(repairRunCliIndex < repairProbeIndex)
+    ) {
+      failures.push(`${scriptPath}: repaired CLI verification must apply the same official version-help exit policy`);
     }
 
     const determineEnd = script.indexOf("extract_rawtherapee_payload() {", determineStart);
