@@ -64,7 +64,7 @@ Windows内测版本：
 
 - [FrameCull AI Flash v0.1.6 简介及教程](https://www.kdocs.cn/l/ckvgLtjq13lO)
 - [FrameCull AI Pro v0.1.6 简介及使用教程](https://www.kdocs.cn/l/ck6O3N1pAKlA)
-- [macOS Flash 安装教程](tools/macos/README-macOS-first-launch.txt)
+- [macOS Flash 安装教程](https://www.kdocs.cn/l/csMm8cw85pTP)
 
 
 ### 💻 系统要求
