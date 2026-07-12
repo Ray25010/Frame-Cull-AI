@@ -48,15 +48,12 @@ Flash 版本轻量快速，可在核显机型上流畅运行；Pro 版本则提�
 
 ### 📦 下载
 
-最新内测版本：  
-[FrameCull AI 0.1.6 Beta 2 Release](https://github.com/Ray25010/Frame-Cull-AI/releases/tag/v0.1.6-beta.2)
+Windows内测版本：  
 
 - [下载 Flash Windows 安装包](https://github.com/Ray25010/Frame-Cull-AI/releases/download/v0.1.6-beta.2/FrameCull.AI.Flash_0.1.6-beta.2_x64-setup.exe)
 - [下载 Pro Windows 安装包](https://github.com/Ray25010/Frame-Cull-AI/releases/download/v0.1.6-beta.2/FrameCull.AI.Pro_0.1.6-beta.2_x64-setup.exe)
 
 #### macOS Flash 0.1.6 测试版
-
-[查看 macOS Flash 预发布页面](https://github.com/Ray25010/Frame-Cull-AI/releases/tag/macos-test-0.1.6-run-29097861619)
 
 - [Apple Silicon（M1 / M2 / M3 / M4 等）下载 arm64 版](https://github.com/Ray25010/Frame-Cull-AI/releases/download/macos-test-0.1.6-run-29097861619/FrameCull-macOS-arm64.zip)
 - [Intel Mac 下载 x64 版](https://github.com/Ray25010/Frame-Cull-AI/releases/download/macos-test-0.1.6-run-29097861619/FrameCull-macOS-x64.zip)
