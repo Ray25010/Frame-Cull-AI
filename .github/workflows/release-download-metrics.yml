@@ -1,0 +1,68 @@
+name: Record release download metrics
+
+on:
+  schedule:
+    - cron: '17 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-download-metrics
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    name: Collect GitHub Release downloads
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout main repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Prepare metrics history branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          metrics_dir="$RUNNER_TEMP/framecull-release-metrics"
+
+          if git ls-remote --exit-code --heads origin metrics >/dev/null 2>&1; then
+            git fetch origin metrics:refs/remotes/origin/metrics
+            git worktree add --detach "$metrics_dir" refs/remotes/origin/metrics
+          else
+            git worktree add --detach "$metrics_dir" HEAD
+            git -C "$metrics_dir" switch --orphan metrics
+          fi
+
+          echo "METRICS_OUTPUT_DIR=$metrics_dir" >> "$GITHUB_ENV"
+
+      - name: Collect release metrics
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node tools/release-metrics/collect-release-metrics.mjs
+
+      - name: Publish metrics history
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$METRICS_OUTPUT_DIR"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md latest.json release-downloads.csv snapshots
+
+          if git diff --cached --quiet; then
+            echo "Release metrics are unchanged."
+            exit 0
+          fi
+
+          git commit -m "metrics: record release downloads $(date -u +%F)"
+          git push origin HEAD:metrics
