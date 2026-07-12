@@ -189,22 +189,30 @@ jobs:
           /usr/bin/otool -L "${MANAGED_CLI}"
           /usr/bin/codesign --verify --strict --verbose=4 "${MANAGED_CLI}" || :
           /usr/bin/codesign -dvvv "${MANAGED_CLI}" 2>&1 || :
-          /usr/bin/xattr -lr "/Applications/RawTherapee.app" || :
-          /usr/bin/xattr -l "${MANAGED_CLI}" || :
+          if /usr/bin/xattr -p com.apple.quarantine "/Applications/RawTherapee.app" >/dev/null 2>&1; then
+            print -r -- "raw_app_quarantine=present"
+          else
+            print -r -- "raw_app_quarantine=absent"
+          fi
+          if /usr/bin/xattr -p com.apple.quarantine "${MANAGED_CLI}" >/dev/null 2>&1; then
+            print -r -- "managed_cli_quarantine=present"
+          else
+            print -r -- "managed_cli_quarantine=absent"
+          fi
 
           probe_cli() {
             local label="$1"
             local cli="$2"
             local seconds="$3"
-            local status=0
+            local probe_status=0
             local started="${SECONDS}"
 
             if run_cli_version_with_timeout "${cli}" "${seconds}"; then
-              status=0
+              probe_status=0
             else
-              status=$?
+              probe_status=$?
             fi
-            print -r -- "probe=${label} timeout=${seconds}s status=${status} elapsed=$((SECONDS - started))s"
+            print -r -- "probe=${label} timeout=${seconds}s status=${probe_status} elapsed=$((SECONDS - started))s"
             print -r -- "output-begin"
             print -r -- "${CLI_VERSION_OUTPUT}"
             print -r -- "output-end"
