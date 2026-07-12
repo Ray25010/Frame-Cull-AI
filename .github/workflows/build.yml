@@ -67,6 +67,56 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Validate build workflow contract
+        run: node tools/check-build-workflow-contract.mjs
+
+      - name: Configure signing environment
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY_SECRET: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD_SECRET: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_CERTIFICATE_SECRET: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD_SECRET: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY_SECRET: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID_SECRET: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD_SECRET: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID_SECRET: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+
+          write_env_if_set() {
+            local name="$1"
+            local value="$2"
+            local delimiter
+
+            if [[ -z "${value}" ]]; then
+              return
+            fi
+
+            delimiter="FRAMECULL_${name}_${RANDOM}${RANDOM}"
+            {
+              printf '%s<<%s\n' "${name}" "${delimiter}"
+              printf '%s\n' "${value}"
+              printf '%s\n' "${delimiter}"
+            } >> "${GITHUB_ENV}"
+          }
+
+          write_env_if_set TAURI_SIGNING_PRIVATE_KEY "${TAURI_SIGNING_PRIVATE_KEY_SECRET}"
+          write_env_if_set TAURI_SIGNING_PRIVATE_KEY_PASSWORD "${TAURI_SIGNING_PRIVATE_KEY_PASSWORD_SECRET}"
+
+          if [[ "${RUNNER_OS}" == "macOS" ]]; then
+            write_env_if_set APPLE_CERTIFICATE "${APPLE_CERTIFICATE_SECRET}"
+            write_env_if_set APPLE_CERTIFICATE_PASSWORD "${APPLE_CERTIFICATE_PASSWORD_SECRET}"
+            if [[ "${RUNNER_OS}" == "macOS" && -z "${APPLE_CERTIFICATE_SECRET}" ]]; then
+              printf 'APPLE_SIGNING_IDENTITY=-\n' >> "${GITHUB_ENV}"
+            else
+              write_env_if_set APPLE_SIGNING_IDENTITY "${APPLE_SIGNING_IDENTITY_SECRET}"
+            fi
+            write_env_if_set APPLE_ID "${APPLE_ID_SECRET}"
+            write_env_if_set APPLE_PASSWORD "${APPLE_PASSWORD_SECRET}"
+            write_env_if_set APPLE_TEAM_ID "${APPLE_TEAM_ID_SECRET}"
+          fi
+
       - name: Build and check release frontend
         run: pnpm run build:release
 
@@ -74,14 +124,6 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'FrameCull AI Beta __VERSION__'
