@@ -1,0 +1,20 @@
+task: >
+  FrameCull Pro Native RAW Preview Lab P1. Build an isolated smoke experiment
+  for native RAW preview decoding, focused on Nikon NEF support and speed. Keep
+  Flash isolated and do not replace the production RAW monitor path in this
+  round.
+coordinator:
+  max_cycles: 1
+  ui:
+    interaction_mode: review
+metric:
+  name: decodeSuccessRate
+  direction: maximize
+eval:
+  dev_command: "cd {cwd} && cargo run --manifest-path tools/pro-raw-preview-lab/Cargo.toml --release -- --input G:\\DCIM\\110NZ6_3\\_DSC0552.NEF --output output\\pro-raw-preview-lab\\p1-smoke"
+  test_command: ""
+protected_paths:
+  - src/workers/aiAnalyzer.worker.ts
+  - src/workers/rawDecoder.worker.ts
+  - src-tauri/tauri.flash.conf.json
+  - public/models

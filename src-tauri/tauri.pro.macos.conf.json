@@ -1,0 +1,24 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "FrameCull AI Pro",
+  "identifier": "com.framecull.ai.pro",
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "FrameCull AI Pro"
+      }
+    ]
+  },
+  "build": {
+    "beforeBuildCommand": "pnpm run build:release:pro:macos"
+  },
+  "bundle": {
+    "resources": {
+      "pro-models/placeholder/model.onnx": "pro-models/placeholder/model.onnx",
+      "pro-models/placeholder/manifest.json": "pro-models/placeholder/manifest.json",
+      "pro-models/semantic_student_v2_grounded_convnext_v14_five_mountain_region/model.int8.onnx": "pro-models/semantic_student_v2_grounded_convnext_v14_five_mountain_region/model.int8.onnx",
+      "pro-models/semantic_student_v2_grounded_convnext_v14_five_mountain_region/manifest.int8.json": "pro-models/semantic_student_v2_grounded_convnext_v14_five_mountain_region/manifest.int8.json"
+    }
+  }
+}

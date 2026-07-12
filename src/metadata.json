@@ -1,0 +1,6 @@
+
+{
+  "name": "FrameCull AI Flash",
+  "description": "Local AI photo culling workstation for RAW+JPG review, ranking, and export.",
+  "requestFramePermissions": []
+}

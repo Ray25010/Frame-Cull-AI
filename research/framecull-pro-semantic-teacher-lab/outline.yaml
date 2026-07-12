@@ -1,0 +1,33 @@
+topic: FrameCull Pro Semantic Teacher Lab
+created_at: 2026-06-22
+status: planned
+primary_output: docs/PRO_SEMANTIC_TEACHER_LAB_RESEARCH_TASK.md
+items:
+  - name: CVPR 2026 grounded visual reasoning
+    category: research_inspiration
+    description: Extract method-level ideas from G2VLM, GR3D, DeepScan, and related grounded reasoning work without binding the product to a single paper.
+  - name: Semantic teacher selection
+    category: teacher_model
+    description: Compare Qwen2.5-VL and InternVL-style candidates for local 5090 offline labeling, JSON reliability, grounding quality, license suitability, and memory footprint.
+  - name: Teacher schema and quality gates
+    category: experiment_design
+    description: Define grounded JSONL records with reasoningTrace, faceRegionVerdicts, semanticKeepScore, and QA-only fields that must not become student heads.
+  - name: Quality and embedding teachers
+    category: feature_teacher
+    description: Generate MUSIQ, CLIP, and DINOv2 teacher features, including mandatory dino[768], for non-VLM distillation targets.
+  - name: Pro Student V2 distillation
+    category: student_model
+    description: Train ConvNeXt-Tiny multi-head student first, keep small ViT as optional only after 6GB DirectML/CoreML feasibility.
+  - name: Evaluation and product gate
+    category: validation
+    description: Evaluate recall, false positives, duplicate pollution, false-face behavior, grounded-vs-flat ablation, and Pro latency before any product entry.
+execution:
+  batch_size: 2
+  items_per_agent: 1
+  output_dir: research/framecull-pro-semantic-teacher-lab/results
+constraints:
+  - Keep Flash wasm workers unchanged.
+  - Keep all heavy cache and model files under /data/FrameCullModelLab.
+  - Use rating>=3 for audit3groups and rating>=1 for camera/other datasets.
+  - Do not use rating, folder, path, or filename as ranking features.
+  - Teacher reads high-resolution originals or prepared high-resolution teacher JPEGs, never 384 previews.

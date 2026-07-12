@@ -1,0 +1,83 @@
+[package]
+name = "framecull-ai"
+version = "0.1.6"
+description = "FrameCull AI - Local AI photo culling workstation"
+authors = ["AGPEIM"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "framecull_ai_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "framecull-ai"
+path = "src/main.rs"
+
+[[bin]]
+name = "pro-infer-bench"
+path = "src/pro-infer-bench.rs"
+required-features = ["pro-bench"]
+
+[features]
+default = []
+pro = ["dep:ort", "dep:ndarray", "dep:rayon", "dep:windows-sys"]
+pro-bench = ["pro"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["protocol-asset"] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2.6"
+tauri-plugin-fs = "2"
+tauri-plugin-window-state = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+kamadak-exif = "0.5"
+trash = "5.1"
+tauri-plugin-os = "2.3.2"
+base64 = "0.22"
+image = { version = "0.25", default-features = false, features = ["jpeg"] }
+
+# Pro-only native ONNX Runtime inference layer (process-internal `ort` binding).
+# These crates must never enter the Flash dependency tree; they are gated behind
+# the optional `pro` feature above and pulled in only via `dep:` activation.
+# `ort` 2.0.0-rc.11 wraps ONNX Runtime 1.23 and depends on ndarray 0.17.
+[dependencies.ort]
+version = "=2.0.0-rc.11"
+optional = true
+default-features = false
+features = ["std", "ndarray", "download-binaries", "copy-dylibs", "tracing", "tls-rustls"]
+
+[dependencies.ndarray]
+version = "0.17"
+optional = true
+
+[dependencies.rayon]
+version = "1.10"
+optional = true
+
+[target.'cfg(windows)'.dependencies.windows-sys]
+version = "0.61"
+optional = true
+features = ["Win32_System_LibraryLoader"]
+
+# Execution-provider features are platform-conditioned so a build only compiles
+# the EP backends that exist on the target. CPU is always the final fallback.
+[target.'cfg(windows)'.dependencies.ort]
+version = "=2.0.0-rc.11"
+optional = true
+default-features = false
+features = ["std", "ndarray", "download-binaries", "copy-dylibs", "tracing", "tls-rustls", "cuda", "directml"]
+
+[target.'cfg(target_os = "macos")'.dependencies.ort]
+version = "=2.0.0-rc.11"
+optional = true
+default-features = false
+features = ["std", "ndarray", "download-binaries", "copy-dylibs", "tracing", "tls-rustls", "coreml"]

@@ -1,0 +1,59 @@
+{
+  "name": "framecull-ai",
+  "private": true,
+  "version": "0.1.6",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "pnpm run build:flash",
+    "build:flash": "cross-env FRAMECULL_EDITION=FLASH tsc && cross-env FRAMECULL_EDITION=FLASH vite build",
+    "build:pro": "cross-env FRAMECULL_EDITION=PRO tsc && cross-env FRAMECULL_EDITION=PRO vite build",
+    "build:release": "pnpm run build:release:flash",
+    "build:release:flash": "pnpm run build:flash && node tools/postprocess-release-artifacts.mjs && node tools/check-release-artifacts.mjs --edition flash",
+    "build:release:pro": "pnpm run build:pro && node tools/postprocess-release-artifacts.mjs && node tools/check-release-artifacts.mjs --edition pro",
+    "build:release:pro:macos": "pnpm run build:pro && node tools/postprocess-release-artifacts.mjs && node tools/check-release-artifacts.mjs --edition pro --target-platform macos",
+    "check:release": "node tools/check-release-artifacts.mjs",
+    "test": "vitest run",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "tauri:build": "pnpm run tauri:build:flash",
+    "tauri:build:flash": "tauri build --config src-tauri/tauri.flash.conf.json",
+    "tauri:build:pro": "tauri build --features pro --config src-tauri/tauri.pro.conf.json"
+  },
+  "dependencies": {
+    "@mediapipe/tasks-vision": "^0.10.35",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "^2.5.0",
+    "@tauri-apps/plugin-fs": "^2.4.5",
+    "@tauri-apps/plugin-opener": "^2",
+    "@tauri-apps/plugin-os": "^2.3.2",
+    "libraw-wasm": "^1.1.2",
+    "lucide-react": "^1.17.0",
+    "onnxruntime-web": "^1.26.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@fortawesome/fontawesome-free": "^7.1.0",
+    "@tauri-apps/cli": "^2",
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.23",
+    "cross-env": "^7.0.3",
+    "postcss": "^8.5.10",
+    "tailwindcss": "^3.4.19",
+    "typescript": "~5.6.2",
+    "vite": "^6.4.3",
+    "vitest": "^4.1.8"
+  },
+  "pnpm": {
+    "overrides": {
+      "@babel/core": "7.29.6",
+      "rollup": "4.59.0",
+      "esbuild": "0.28.1",
+      "picomatch@2.3.1": "2.3.2",
+      "picomatch@4.0.3": "4.0.4"
+    }
+  }
+}

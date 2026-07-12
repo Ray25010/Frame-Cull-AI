@@ -1,0 +1,21 @@
+FrameCull AI Pro third-party RAW engine notice
+
+RawTherapee
+- Version: 5.12 Windows 64-bit release
+- Upstream: https://github.com/RawTherapee/RawTherapee
+- Release: https://github.com/RawTherapee/RawTherapee/releases/tag/5.12
+- Bundled artifact: RawTherapee_5.12_win64_release.zip
+- SHA-256: a6de1797da462975435846db7b79a981557350af1bdac07525bf6884ede805dd
+- License: GNU General Public License version 3
+
+FrameCull AI Pro uses the bundled RawTherapee command-line runtime only to
+generate local RAW monitor preview caches. The cache is for viewing while
+culling and does not modify originals, XMP sidecars, Lightroom catalogs, AI
+analysis inputs, or exported originals.
+
+RawTherapee source code is available from the upstream project:
+https://github.com/RawTherapee/RawTherapee
+
+The bundled RawTherapee runtime includes its own LICENSE, AUTHORS,
+AboutThisBuild.txt, RELEASE_NOTES.txt, and dependency license files in the
+RawTherapee directory.

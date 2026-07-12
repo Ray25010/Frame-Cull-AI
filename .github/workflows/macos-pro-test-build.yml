@@ -1,0 +1,333 @@
+name: Build macOS Pro Test Packages
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches:
+      - "codex/**"
+    paths:
+      - ".github/workflows/macos-pro-test-build.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "public/**"
+      - "src/**"
+      - "src-tauri/**"
+      - "tools/check-release-artifacts.mjs"
+      - "tools/postprocess-release-artifacts.mjs"
+      - "tools/macos/check-pro-installer-contract.mjs"
+      - "tools/macos/FrameCull-Pro-Install.command"
+      - "tools/macos/FrameCull-Pro-Install.test.zsh"
+      - "tools/macos/README-FrameCull-Pro-macOS-first-launch.txt"
+  workflow_dispatch:
+
+jobs:
+  build-macos-pro-test:
+    name: Build Pro ${{ matrix.artifact_label }}
+    runs-on: macos-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rust_target: aarch64-apple-darwin
+            expected_arch: arm64
+            artifact_label: macOS-arm64
+            tauri_config: src-tauri/tauri.pro.macos.conf.json
+          - rust_target: x86_64-apple-darwin
+            expected_arch: x86_64
+            artifact_label: macOS-x64
+            tauri_config: src-tauri/tauri.pro.macos.x64.conf.json
+    env:
+      CI: true
+      APPLE_SIGNING_IDENTITY: "-"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_target }}
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate Pro installer workflow contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/macos/check-pro-installer-contract.mjs --workflow
+
+      - name: Prepare official Intel ONNX Runtime
+        if: matrix.rust_target == 'x86_64-apple-darwin'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          manifest="src-tauri/vendor/onnxruntime/onnxruntime-1.23.2-macos-x64.json"
+          version="$(node -e 'const fs=require("node:fs"); const m=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); process.stdout.write(m.version)' "${manifest}")"
+          source_url="$(node -e 'const fs=require("node:fs"); const m=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); process.stdout.write(m.sourceUrl)' "${manifest}")"
+          expected_sha="$(node -e 'const fs=require("node:fs"); const m=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); process.stdout.write(m.sha256)' "${manifest}")"
+          dylib_name="$(node -e 'const fs=require("node:fs"); const m=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); process.stdout.write(m.dylib)' "${manifest}")"
+          archive="${RUNNER_TEMP}/onnxruntime-osx-x86_64-${version}.tgz"
+          extract_dir="${RUNNER_TEMP}/onnxruntime-osx-x86_64"
+          runtime_root="${extract_dir}/onnxruntime-osx-x86_64-${version}"
+          stage_dir="src-tauri/vendor/onnxruntime/macos-x64"
+
+          curl --fail --location --retry 3 --output "${archive}" "${source_url}"
+          echo "${expected_sha}  ${archive}" | /usr/bin/shasum -a 256 --check
+          mkdir -p "${extract_dir}" "${stage_dir}"
+          tar -xzf "${archive}" -C "${extract_dir}"
+
+          test -f "${runtime_root}/lib/${dylib_name}"
+          cp -L "${runtime_root}/lib/${dylib_name}" "${stage_dir}/${dylib_name}"
+          cp "${runtime_root}/LICENSE" "${stage_dir}/LICENSE"
+          cp "${runtime_root}/ThirdPartyNotices.txt" "${stage_dir}/ThirdPartyNotices.txt"
+          cp "${runtime_root}/VERSION_NUMBER" "${stage_dir}/VERSION_NUMBER"
+
+          echo "ORT_LIB_LOCATION=${runtime_root}/lib" >> "${GITHUB_ENV}"
+          echo "ORT_PREFER_DYNAMIC_LINK=1" >> "${GITHUB_ENV}"
+          echo 'CARGO_TARGET_X86_64_APPLE_DARWIN_RUSTFLAGS=-C link-arg=-Wl,-rpath,@executable_path/../Frameworks' >> "${GITHUB_ENV}"
+
+      - name: Validate Pro package inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          /bin/zsh -n tools/macos/FrameCull-Pro-Install.command
+          /bin/zsh -n tools/macos/FrameCull-Pro-Install.test.zsh
+          node tools/macos/check-pro-installer-contract.mjs --source
+          node -e '
+            const fs = require("node:fs");
+            const model = "pro-models/semantic_student_v2_grounded_convnext_v14_five_mountain_region/model.int8.onnx";
+            const manifest = "pro-models/semantic_student_v2_grounded_convnext_v14_five_mountain_region/manifest.int8.json";
+            const rawTherapeeManifestPath = "src-tauri/vendor/rawtherapee/rawtherapee-5.12-macos-universal.json";
+            for (const path of ["src-tauri/tauri.pro.macos.conf.json", "src-tauri/tauri.pro.macos.x64.conf.json"]) {
+              const config = JSON.parse(fs.readFileSync(path, "utf8"));
+              if (config.productName !== "FrameCull AI Pro") throw new Error(`${path}: wrong Pro productName`);
+              if (config.identifier !== "com.framecull.ai.pro") throw new Error(`${path}: wrong Pro identifier`);
+              const resources = config.bundle?.resources ?? {};
+              if (resources[model] !== model || resources[manifest] !== manifest) throw new Error(`${path}: Pro model resources missing`);
+              if (Object.keys(resources).some(resource => /windows-x64|RawTherapee_5\.12_win64/i.test(resource))) throw new Error(`${path}: Windows RawTherapee leaked into macOS config`);
+            }
+            const rawTherapeeManifest = JSON.parse(fs.readFileSync(rawTherapeeManifestPath, "utf8"));
+            if (rawTherapeeManifest.artifact !== "RawTherapee_macOS_15.4_Universal_5.12.zip") throw new Error(`${rawTherapeeManifestPath}: wrong artifact`);
+            if (typeof rawTherapeeManifest.sourceUrl !== "string" || !rawTherapeeManifest.sourceUrl.startsWith("https://github.com/RawTherapee/RawTherapee/releases/download/")) throw new Error(`${rawTherapeeManifestPath}: wrong sourceUrl`);
+            if (rawTherapeeManifest.sha256 !== "2f284d1c023f53f0c492aecc3f7635d6b7807ef22d5413ee55715d81e81fe688") throw new Error(`${rawTherapeeManifestPath}: wrong sha256`);
+          '
+
+          if [[ "${{ matrix.rust_target }}" == "x86_64-apple-darwin" ]]; then
+            test -f src-tauri/vendor/onnxruntime/macos-x64/libonnxruntime.1.23.2.dylib
+          fi
+
+      - name: Run Pro installer state and Rust tests
+        if: matrix.rust_target == 'aarch64-apple-darwin'
+        shell: bash
+        run: |
+          set -euo pipefail
+          /bin/zsh tools/macos/FrameCull-Pro-Install.test.zsh
+          cargo test --manifest-path src-tauri/Cargo.toml --target "${{ matrix.rust_target }}" --lib tests::macos_rawtherapee_candidates_match_supported_priority_order -- --exact
+
+      - name: Download official RawTherapee installer
+        id: rawtherapee
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          manifest="src-tauri/vendor/rawtherapee/rawtherapee-5.12-macos-universal.json"
+          artifact="$(node -e 'const fs=require("node:fs"); const m=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); process.stdout.write(m.artifact)' "${manifest}")"
+          source_url="$(node -e 'const fs=require("node:fs"); const m=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); process.stdout.write(m.sourceUrl)' "${manifest}")"
+          expected_sha="$(node -e 'const fs=require("node:fs"); const m=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); process.stdout.write(m.sha256)' "${manifest}")"
+          archive="${RUNNER_TEMP}/${artifact}"
+
+          curl --fail --location --retry 3 --output "${archive}" "${source_url}"
+          echo "${expected_sha}  ${archive}" | /usr/bin/shasum -a 256 --check
+
+          echo "archive_path=${archive}" >> "${GITHUB_OUTPUT}"
+          echo "artifact_name=${artifact}" >> "${GITHUB_OUTPUT}"
+
+      - name: Build Tauri Pro app
+        run: pnpm exec tauri build --features pro --config "${{ matrix.tauri_config }}" --target "${{ matrix.rust_target }}"
+
+      - name: Stage and verify Pro tester package
+        id: stage
+        env:
+          RUST_TARGET: ${{ matrix.rust_target }}
+          EXPECTED_ARCH: ${{ matrix.expected_arch }}
+          ARTIFACT_LABEL: ${{ matrix.artifact_label }}
+          RAWTHERAPEE_ARCHIVE: ${{ steps.rawtherapee.outputs.archive_path }}
+          RAWTHERAPEE_ARTIFACT: ${{ steps.rawtherapee.outputs.artifact_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          bundle_root="src-tauri/target/${RUST_TARGET}/release/bundle"
+          dmg_path="$(find "${bundle_root}/dmg" -maxdepth 1 -type f -name '*.dmg' -print -quit)"
+          app_path="${bundle_root}/macos/FrameCull AI Pro.app"
+          app_binary="${app_path}/Contents/MacOS/framecull-ai"
+          model_root="${app_path}/Contents/Resources/pro-models/semantic_student_v2_grounded_convnext_v14_five_mountain_region"
+
+          test -n "${dmg_path}"
+          test -f "${dmg_path}"
+          test -d "${app_path}"
+          test -x "${app_binary}"
+          test -f "${model_root}/model.int8.onnx"
+          test -f "${model_root}/manifest.int8.json"
+          test -f "${RAWTHERAPEE_ARCHIVE}"
+          test "$(basename "${RAWTHERAPEE_ARCHIVE}")" = "${RAWTHERAPEE_ARTIFACT}"
+          test ! -e "${app_path}/Contents/Resources/raw-engines/rawtherapee/windows-x64"
+          ! find "${app_path}" -type f -name 'pro-infer-bench*' -print -quit | grep -q .
+
+          bundle_id="$(/usr/bin/plutil -extract CFBundleIdentifier raw -o - "${app_path}/Contents/Info.plist")"
+          bundle_name="$(/usr/bin/plutil -extract CFBundleName raw -o - "${app_path}/Contents/Info.plist")"
+          test "${bundle_id}" = "com.framecull.ai.pro"
+          test "${bundle_name}" = "FrameCull AI Pro"
+
+          archs="$(/usr/bin/lipo -archs "${app_binary}")"
+          test "${archs}" = "${EXPECTED_ARCH}"
+
+          expected_model_sha="$(node -e 'const fs=require("node:fs"); const m=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); process.stdout.write(String(m.sha256).toLowerCase())' "${model_root}/manifest.int8.json")"
+          actual_model_sha="$(/usr/bin/shasum -a 256 "${model_root}/model.int8.onnx" | awk '{print tolower($1)}')"
+          test "${actual_model_sha}" = "${expected_model_sha}"
+
+          /usr/bin/codesign --verify --deep --strict --verbose=2 "${app_path}"
+          /usr/bin/codesign -dvv "${app_path}"
+          /usr/bin/otool -L "${app_binary}"
+
+          if [[ "${RUST_TARGET}" == "x86_64-apple-darwin" ]]; then
+            ort_dylib="${app_path}/Contents/Frameworks/libonnxruntime.1.23.2.dylib"
+            test -f "${ort_dylib}"
+            test "$(/usr/bin/lipo -archs "${ort_dylib}")" = "x86_64"
+            /usr/bin/codesign --verify --strict --verbose=2 "${ort_dylib}"
+            /usr/bin/otool -L "${app_binary}" | grep -F 'libonnxruntime.1.23.2.dylib'
+            /usr/bin/otool -l "${app_binary}" | grep -F '@executable_path/../Frameworks'
+          fi
+
+          stage_dir="${RUNNER_TEMP}/FrameCull-Pro-${ARTIFACT_LABEL}"
+          archive_path="${GITHUB_WORKSPACE}/FrameCull-Pro-${ARTIFACT_LABEL}.zip"
+          mkdir -p "${stage_dir}"
+          cp "${dmg_path}" "${stage_dir}/"
+          cp "${RAWTHERAPEE_ARCHIVE}" "${stage_dir}/${RAWTHERAPEE_ARTIFACT}"
+          cp tools/macos/FrameCull-Pro-Install.command "${stage_dir}/"
+          cp tools/macos/README-FrameCull-Pro-macOS-first-launch.txt "${stage_dir}/"
+          chmod +x "${stage_dir}/FrameCull-Pro-Install.command"
+
+          (
+            cd "${stage_dir}"
+            /usr/bin/shasum -a 256 ./*.dmg "${RAWTHERAPEE_ARTIFACT}" FrameCull-Pro-Install.command README-FrameCull-Pro-macOS-first-launch.txt > SHA256SUMS.txt
+            /bin/zsh ./FrameCull-Pro-Install.command --verify-only
+          )
+
+          installer_path="${stage_dir}/FrameCull-Pro-Install.command"
+          FRAMECULL_INSTALLER_SOURCE_ONLY=1 /bin/zsh -c '
+            set -euo pipefail
+            source "$0"
+            WORK_DIR="$(/usr/bin/mktemp -d "${RUNNER_TEMP}/framecull-pro-mount-smoke.XXXXXX")"
+            post_cleanup_info=""
+            cleanup_mount_smoke() {
+              cleanup || :
+              [[ -z "${post_cleanup_info}" ]] || /bin/rm -f -- "${post_cleanup_info}"
+            }
+            trap cleanup_mount_smoke EXIT
+            verify_package_contract
+            extract_rawtherapee_payload
+            print -u2 -r -- "Mount smoke: attaching FrameCull DMG"
+            attach_dmg_readonly "${FRAME_DMG}"
+            [[ -d "${ATTACHED_MOUNT_POINT}/FrameCull AI Pro.app" ]]
+            print -u2 -r -- "Mount smoke: attaching RawTherapee DMG"
+            attach_dmg_readonly "${RAW_PAYLOAD_DMG}"
+            [[ -d "${ATTACHED_MOUNT_POINT}/RawTherapee.app" ]]
+            cleanup
+            post_cleanup_info="$(/usr/bin/mktemp "${RUNNER_TEMP}/framecull-pro-post-cleanup.XXXXXX")"
+            run_hdiutil info -plist >"${post_cleanup_info}"
+            parse_plist_devices "${post_cleanup_info}" "${FRAME_DMG}"
+            (( ${#PARSED_PLIST_DEVICES[@]} == 0 ))
+            parse_plist_devices "${post_cleanup_info}" "${RAW_PAYLOAD_DMG}"
+            (( ${#PARSED_PLIST_DEVICES[@]} == 0 ))
+            /bin/rm -f -- "${post_cleanup_info}"
+            post_cleanup_info=""
+            trap - EXIT
+          ' "${installer_path}"
+
+          tamper_dir="${RUNNER_TEMP}/FrameCull-Pro-${ARTIFACT_LABEL}-tampered"
+          /usr/bin/ditto "${stage_dir}" "${tamper_dir}"
+          /usr/bin/printf '\nTamper check sentinel.\n' >> "${tamper_dir}/README-FrameCull-Pro-macOS-first-launch.txt"
+          if (
+            cd "${tamper_dir}" &&
+            /bin/zsh ./FrameCull-Pro-Install.command --verify-only
+          ); then
+            echo "Tampered package unexpectedly passed verify-only."
+            exit 1
+          fi
+
+          /usr/bin/ditto -c -k --sequesterRsrc --keepParent "${stage_dir}" "${archive_path}"
+          echo "archive_path=${archive_path}" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload Pro tester package
+        uses: actions/upload-artifact@v4
+        with:
+          name: FrameCull-Pro-${{ matrix.artifact_label }}
+          path: ${{ steps.stage.outputs.archive_path }}
+          if-no-files-found: error
+          retention-days: 14
+
+  publish-pro-draft:
+    name: Publish Pro draft release
+    needs: build-macos-pro-test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download Pro packages
+        uses: actions/download-artifact@v4
+        with:
+          pattern: FrameCull-Pro-macOS-*
+          path: packages
+          merge-multiple: true
+
+      - name: Verify Pro packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f packages/FrameCull-Pro-macOS-arm64.zip
+          test -f packages/FrameCull-Pro-macOS-x64.zip
+          sha256sum packages/*.zip
+
+      - name: Create private Pro draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="macos-pro-test-0.1.6-run-${GITHUB_RUN_ID}-attempt-${GITHUB_RUN_ATTEMPT}"
+          notes_path="${RUNNER_TEMP}/release-notes.txt"
+          cat > "${notes_path}" <<EOF
+          Internal unnotarized FrameCull AI Pro macOS test packages from Actions run ${GITHUB_RUN_ID} attempt ${GITHUB_RUN_ATTEMPT}.
+
+          Each Pro ZIP contains the Pro app DMG, the unified FrameCull-Pro-Install.command installer/update script, the Chinese README, and the pinned official RawTherapee 5.12 macOS Universal ZIP.
+
+          When RawTherapee is already healthy, the script updates only FrameCull. When RawTherapee is missing or verification fails, the script repairs RawTherapee and then updates FrameCull.
+
+          The official RawTherapee ZIP is shipped unchanged and SHA256SUMS.txt covers the FrameCull DMG, the fixed RawTherapee ZIP, FrameCull-Pro-Install.command, and the README.
+
+          FrameCull remains ad-hoc signed and these internal beta packages are not notarized. The legacy first-launch helper is not included.
+          EOF
+          gh release create "${tag}" packages/*.zip \
+            --repo "${GITHUB_REPOSITORY}" \
+            --draft \
+            --prerelease \
+            --target "${GITHUB_SHA}" \
+            --title "FrameCull AI Pro macOS Test 0.1.6 (run ${GITHUB_RUN_ID} attempt ${GITHUB_RUN_ATTEMPT})" \
+            --notes-file "${notes_path}"

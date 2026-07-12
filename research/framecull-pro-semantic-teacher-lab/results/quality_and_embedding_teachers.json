@@ -1,0 +1,46 @@
+{
+  "overview": "MUSIQ, CLIP, and DINOv2 provide non-VLM teacher targets for quality and embedding distillation. DINOv2 dino[768] is mandatory because it gives a strong visual representation that does not depend on language prompts.",
+  "evidence": [
+    {
+      "name": "DINOv2",
+      "source": "https://arxiv.org/abs/2304.07193",
+      "use": "Self-supervised visual embedding teacher, required dino[768]."
+    },
+    {
+      "name": "DINOv2 repository",
+      "source": "https://github.com/facebookresearch/dinov2",
+      "use": "Implementation and license source."
+    },
+    {
+      "name": "CLIP",
+      "source": "https://arxiv.org/abs/2103.00020",
+      "use": "Language-aligned embedding teacher."
+    },
+    {
+      "name": "MUSIQ",
+      "source": "https://arxiv.org/abs/2108.05997",
+      "use": "Image quality and aesthetic score teacher."
+    }
+  ],
+  "applicability": "These teachers should train student heads and embedding alignment, not directly override hard-fault rules. Their outputs are useful as distillation targets and ablation features.",
+  "implementation_tasks": [
+    "Run build_quality_teacher_features.py on camera and audit preview sets.",
+    "Generate teacher-camera.npz and teacher-audit3groups.npz.",
+    "Fail if DINOv2 output is not exactly 768 dimensions.",
+    "Record feature summary and model/cache path under /data/FrameCullModelLab.",
+    "Keep these features separate from high-resolution VLM teacher input."
+  ],
+  "validation": [
+    "teacher-feature-summary.json exists.",
+    "Each dataset NPZ includes musiq_tech, musiq_aes, clip[512], and dino[768].",
+    "Training script verifies dinoDim=768.",
+    "Missing features are reported and not silently imputed for official runs."
+  ],
+  "risks": [
+    "MUSIQ and CLIP are generic and may not reflect personal culling preference.",
+    "Feature extraction can be slow or fail due to dependency/model downloads.",
+    "Using low-resolution previews for all teacher signals would weaken semantic supervision."
+  ],
+  "go_no_go": "Do not run official semantic student training without real DINOv2 features. Fake features are allowed only for plumbing smoke.",
+  "uncertain": []
+}

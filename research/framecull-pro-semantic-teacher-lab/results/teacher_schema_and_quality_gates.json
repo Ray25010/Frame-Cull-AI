@@ -1,0 +1,41 @@
+{
+  "overview": "The teacher schema is the control surface that turns vague visual understanding into auditable training data. It must force region evidence, bounded numeric scores, scene enums, and explicit uncertainty before any student training.",
+  "evidence": [
+    {
+      "name": "Local schema validator",
+      "source": "tools/pro-train/semantic_teacher_schema.py",
+      "use": "Defines framecull-semantic-teacher-v1 validation rules."
+    },
+    {
+      "name": "Teacher runner",
+      "source": "tools/pro-train/run_semantic_teacher.py",
+      "use": "Generates grounded and flat-scalar teacher JSONL records."
+    },
+    {
+      "name": "Teacher QA auditor",
+      "source": "tools/pro-train/audit_semantic_teacher.py",
+      "use": "Writes teacher quality reports and QA samples."
+    }
+  ],
+  "applicability": "Schema fields should map to Pro student heads only when they are product-facing and measurable. QA-only fields may remain in teacher records but must not become student heads unless a later product decision explicitly promotes them.",
+  "implementation_tasks": [
+    "Validate schemaVersion, sceneType enum, all numeric scores in 0..1, and normalized boxes.",
+    "Map unknown scene strings to the closest allowed enum or other before validation.",
+    "Reject or quarantine records with empty grounded evidence in grounded mode.",
+    "Write teacher-quality-report.md and teacher-qa-samples.csv for every teacher run.",
+    "Keep QA-only fields out of export_pro_semantic_onnx.py heads."
+  ],
+  "validation": [
+    "semantic_teacher_schema.py passes grounded JSONL.",
+    "semantic_teacher_schema.py --allow-flat-scalar passes flat ablation JSONL.",
+    "QA report includes coverage, scene distribution, uncertainty, and false-face samples.",
+    "Student manifest contains only approved ProHeadScores-compatible heads."
+  ],
+  "risks": [
+    "Over-strict schema can waste otherwise useful records.",
+    "Over-loose normalization can hide teacher failures.",
+    "Scene label drift can break training if enum mapping is not deterministic."
+  ],
+  "go_no_go": "Do not start full student training until grounded teacher JSONL, flat-scalar JSONL, and teacher QA all pass with recorded failure handling.",
+  "uncertain": []
+}

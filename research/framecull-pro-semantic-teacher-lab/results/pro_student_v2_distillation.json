@@ -1,0 +1,45 @@
+{
+  "overview": "Pro Student V2 should be a shared-backbone multi-head model, with ConvNeXt-Tiny as the first practical baseline. It distills semantic teacher outputs, quality features, embeddings, and persona labels into a model that can run through the Pro native inference layer.",
+  "evidence": [
+    {
+      "name": "Pro model architecture",
+      "source": "docs/PRO_MODEL_ARCHITECTURE.md",
+      "use": "Defines Pro native inference, 384 input, shared backbone, and Flash isolation."
+    },
+    {
+      "name": "Semantic student trainer",
+      "source": "tools/pro-train/train_semantic_student.py",
+      "use": "Current implementation path for grounded teacher student training."
+    },
+    {
+      "name": "Semantic ONNX exporter",
+      "source": "tools/pro-train/export_pro_semantic_onnx.py",
+      "use": "Exports FP32 and INT8 manifests compatible with Pro inference."
+    }
+  ],
+  "applicability": "The student should learn product-facing heads: aesthetic, scene, personaScore, semanticKeepScore, faceValidityScore, falseFaceRisk, composition, moment, and lightingMood. QA-only fields remain for auditing.",
+  "implementation_tasks": [
+    "Train ConvNeXt-Tiny first with 384 student previews.",
+    "Use dataset-specific positive thresholds: audit3groups rating>=3, camera rating>=1.",
+    "Use grouped split by shoot/source to reduce burst leakage.",
+    "Export FP32 and INT8 ONNX packages.",
+    "Write quant-compare.json and selected-model-manifest.json.",
+    "Keep Flash isolated from ort, ndarray, ONNX model files, and Pro calls."
+  ],
+  "validation": [
+    "student-best.pt and training-report.json are written.",
+    "FP32 and INT8 exports load through Pro native inference.",
+    "INT8 drift stays under the configured threshold.",
+    "Bad image returns per-image error without failing the batch.",
+    "Latency report covers DirectML and CPU fallback where available."
+  ],
+  "risks": [
+    "A small student may not preserve grounded teacher behavior.",
+    "INT8 quantization can change ranking enough to hurt recall.",
+    "Scene imbalance can make the semantic head overfit outdoor/person-heavy data."
+  ],
+  "go_no_go": "Promote only if low-ratio recall or 4/5-star coverage improves while hard issue picks remain zero and duplicate pollution does not increase.",
+  "uncertain": [
+    "Small ViT remains optional until 6GB DirectML/CoreML feasibility is proven."
+  ]
+}

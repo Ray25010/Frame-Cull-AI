@@ -1,0 +1,108 @@
+name: Build macOS Test Packages
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - 'codex/**'
+    paths:
+      - '.github/workflows/macos-test-build.yml'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'public/**'
+      - 'src/**'
+      - 'src-tauri/**'
+      - 'tools/macos/**'
+  workflow_dispatch:
+
+jobs:
+  build-macos-test:
+    name: Build ${{ matrix.artifact_label }}
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rust_target: aarch64-apple-darwin
+            artifact_label: macOS-arm64
+          - rust_target: x86_64-apple-darwin
+            artifact_label: macOS-x64
+    env:
+      CI: true
+      APPLE_SIGNING_IDENTITY: '-'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_target }}
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate first-launch helper
+        run: /bin/zsh -n tools/macos/FrameCull-First-Launch.command
+
+      - name: Build Tauri Flash app
+        run: pnpm exec tauri build --features default --config src-tauri/tauri.flash.conf.json --target "${{ matrix.rust_target }}"
+
+      - name: Stage tester package
+        id: stage
+        env:
+          RUST_TARGET: ${{ matrix.rust_target }}
+          ARTIFACT_LABEL: ${{ matrix.artifact_label }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          bundle_root="src-tauri/target/${RUST_TARGET}/release/bundle"
+          dmg_path="$(find "${bundle_root}/dmg" -maxdepth 1 -type f -name '*.dmg' -print -quit)"
+          app_path="$(find "${bundle_root}/macos" -maxdepth 1 -type d -name '*.app' -print -quit)"
+
+          test -n "${dmg_path}"
+          test -f "${dmg_path}"
+          test -n "${app_path}"
+          test -d "${app_path}"
+
+          /usr/bin/codesign --verify --deep --strict --verbose=2 "${app_path}"
+          /usr/bin/codesign -dvv "${app_path}"
+
+          stage_dir="${RUNNER_TEMP}/FrameCull-${ARTIFACT_LABEL}"
+          archive_path="${GITHUB_WORKSPACE}/FrameCull-${ARTIFACT_LABEL}.zip"
+          mkdir -p "${stage_dir}"
+          cp "${dmg_path}" "${stage_dir}/"
+          cp tools/macos/FrameCull-First-Launch.command "${stage_dir}/"
+          cp tools/macos/README-macOS-first-launch.txt "${stage_dir}/"
+          chmod +x "${stage_dir}/FrameCull-First-Launch.command"
+
+          (
+            cd "${stage_dir}"
+            /usr/bin/shasum -a 256 ./*.dmg FrameCull-First-Launch.command README-macOS-first-launch.txt > SHA256SUMS.txt
+          )
+
+          /usr/bin/ditto -c -k --sequesterRsrc --keepParent "${stage_dir}" "${archive_path}"
+          echo "archive_path=${archive_path}" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload tester package
+        uses: actions/upload-artifact@v4
+        with:
+          name: FrameCull-${{ matrix.artifact_label }}
+          path: ${{ steps.stage.outputs.archive_path }}
+          if-no-files-found: error
+          retention-days: 14

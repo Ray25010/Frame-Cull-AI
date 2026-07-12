@@ -1,0 +1,8 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "FrameCull AI Flash",
+  "identifier": "com.framecull.ai.flash",
+  "build": {
+    "beforeBuildCommand": "pnpm run build:release:flash"
+  }
+}
