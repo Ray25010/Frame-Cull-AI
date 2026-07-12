@@ -61,7 +61,7 @@ Flash 版本轻量快速，可在核显机型上流畅运行；Pro 版本则提�
 - [Apple Silicon（M1 / M2 / M3 / M4 等）下载 arm64 版](https://github.com/Ray25010/Frame-Cull-AI/releases/download/macos-test-0.1.6-run-29097861619/FrameCull-macOS-arm64.zip)
 - [Intel Mac 下载 x64 版](https://github.com/Ray25010/Frame-Cull-AI/releases/download/macos-test-0.1.6-run-29097861619/FrameCull-macOS-x64.zip)
 
-> macOS 测试包尚未经过 Apple Developer ID 公证。请只从本仓库的官方 Release 页面下载，并根据 Mac 芯片选择正确架构。
+> macOS 测试包尚未经过 Apple Developer ID 公证。请只从本仓库的官方 Release 页面下载，根据 Mac 芯片选择正确架构，并根据下方的安装文档进行安装。
 
 ### 📚 文档与教程
 
@@ -71,13 +71,6 @@ Flash 版本轻量快速，可在核显机型上流畅运行；Pro 版本则提�
 - [FrameCull AI Pro v0.1.6 简介及使用教程](https://www.kdocs.cn/l/ck6O3N1pAKlA)
 - [macOS Flash 随包安装说明](tools/macos/README-macOS-first-launch.txt)
 
-#### macOS Flash 安装与首次打开
-
-1. 根据 Mac 芯片下载 `arm64` 或 `x64` ZIP，并完整解压。
-2. 打开 DMG，把“FrameCull AI Flash”拖入 Applications（应用程序）。
-3. 先尝试从 Applications 正常打开应用。
-4. 如果 macOS 提示无法验证开发者，右键打开 ZIP 内的 `FrameCull-First-Launch.command`，再确认运行一次。
-5. 首次打开助手只会移除 `/Applications/FrameCull AI Flash.app` 的下载隔离标记，不会关闭全局 Gatekeeper，也不会修改其他应用。
 
 ### 💻 系统要求
 
@@ -183,13 +176,6 @@ Latest beta release:
 - [FrameCull AI Pro v0.1.6 guide on WPS Docs](https://www.kdocs.cn/l/ck6O3N1pAKlA)
 - [Bundled macOS Flash installation guide](tools/macos/README-macOS-first-launch.txt)
 
-#### Install and open macOS Flash
-
-1. Download and fully extract the `arm64` or `x64` ZIP that matches your Mac.
-2. Open the DMG and drag “FrameCull AI Flash” into Applications.
-3. Try opening the app normally from Applications first.
-4. If macOS cannot verify the developer, right-click `FrameCull-First-Launch.command` from the ZIP and confirm that you want to open it once.
-5. The helper only removes the download quarantine attribute from `/Applications/FrameCull AI Flash.app`. It does not disable global Gatekeeper or modify other applications.
 
 ### 💻 Requirements
 
