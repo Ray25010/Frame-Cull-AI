@@ -58,7 +58,7 @@ Windows内测版本：
 - [Apple Silicon（M1 / M2 / M3 / M4 等）下载 arm64 版](https://github.com/Ray25010/Frame-Cull-AI/releases/download/macos-test-0.1.6-run-29097861619/FrameCull-macOS-arm64.zip)
 - [Intel Mac 下载 x64 版](https://github.com/Ray25010/Frame-Cull-AI/releases/download/macos-test-0.1.6-run-29097861619/FrameCull-macOS-x64.zip)
 
-> macOS 测试包尚未经过 Apple Developer ID 公证。请只从本仓库的官方 Release 页面下载，根据 Mac 芯片选择正确架构，并根据下方的安装文档进行安装。
+> macOS 测试包尚未经过 Apple Developer ID 公证。请根据 Mac 芯片选择正确架构，并根据下方的安装文档进行安装。
 
 ### 📚 文档与教程
 
