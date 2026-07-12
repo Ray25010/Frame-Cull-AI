@@ -62,8 +62,6 @@ Windows内测版本：
 
 ### 📚 文档与教程
 
-- [Flash 中文说明](docs/editions/README_FLASH_CN.md)
-- [Pro 中文说明](docs/editions/README_PRO_CN.md)
 - [FrameCull AI Flash v0.1.6 简介及教程](https://www.kdocs.cn/l/ckvgLtjq13lO)
 - [FrameCull AI Pro v0.1.6 简介及使用教程](https://www.kdocs.cn/l/ck6O3N1pAKlA)
 - [macOS Flash 随包安装说明](tools/macos/README-macOS-first-launch.txt)
