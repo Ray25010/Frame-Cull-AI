@@ -1,6 +1,6 @@
 date,captured_at,release_tag,release_name,is_prerelease,asset_id,asset_name,size_bytes,download_count,download_delta,tracking_state
-2026-07-12,2026-07-12T15:47:41.534Z,macos-test-0.1.6-run-29097861619,FrameCull AI Flash macOS 测试版 0.1.6,true,474239920,FrameCull-macOS-arm64.zip,70209078,6,6,new
-2026-07-12,2026-07-12T15:47:41.534Z,macos-test-0.1.6-run-29097861619,FrameCull AI Flash macOS 测试版 0.1.6,true,474239921,FrameCull-macOS-x64.zip,70853683,2,2,new
-2026-07-12,2026-07-12T15:47:41.534Z,v0.1.6-beta.2,FrameCull AI 0.1.6 Beta 2,true,471646134,FrameCull.AI.Flash_0.1.6-beta.2_x64-setup.exe,69454678,1,1,new
-2026-07-12,2026-07-12T15:47:41.534Z,v0.1.6-beta.2,FrameCull AI 0.1.6 Beta 2,true,471646133,FrameCull.AI.Pro_0.1.6-beta.2_x64-setup.exe,147200046,2,2,new
-2026-07-12,2026-07-12T15:47:41.534Z,v0.1.6-beta.2,FrameCull AI 0.1.6 Beta 2,true,471646136,FrameCull.AI.Pro_0.1.6-beta.2_x64.msi,297022088,0,0,new
+2026-07-12,2026-07-12T15:50:23.723Z,macos-test-0.1.6-run-29097861619,FrameCull AI Flash macOS 测试版 0.1.6,true,474239920,FrameCull-macOS-arm64.zip,70209078,6,6,new
+2026-07-12,2026-07-12T15:50:23.723Z,macos-test-0.1.6-run-29097861619,FrameCull AI Flash macOS 测试版 0.1.6,true,474239921,FrameCull-macOS-x64.zip,70853683,2,2,new
+2026-07-12,2026-07-12T15:50:23.723Z,v0.1.6-beta.2,FrameCull AI 0.1.6 Beta 2,true,471646134,FrameCull.AI.Flash_0.1.6-beta.2_x64-setup.exe,69454678,1,1,new
+2026-07-12,2026-07-12T15:50:23.723Z,v0.1.6-beta.2,FrameCull AI 0.1.6 Beta 2,true,471646133,FrameCull.AI.Pro_0.1.6-beta.2_x64-setup.exe,147200046,2,2,new
+2026-07-12,2026-07-12T15:50:23.723Z,v0.1.6-beta.2,FrameCull AI 0.1.6 Beta 2,true,471646136,FrameCull.AI.Pro_0.1.6-beta.2_x64.msi,297022088,0,0,new
