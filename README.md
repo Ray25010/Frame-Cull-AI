@@ -3,16 +3,16 @@
 > 此分支由 GitHub Actions 每日自动更新，请勿手工修改生成文件。
 
 - 仓库：`Ray25010/Frame-Cull-AI`
-- 统计日期：`2026-07-19`
-- 采集时间：`2026-07-19T03:58:38.462Z`
+- 统计日期：`2026-07-20`
+- 采集时间：`2026-07-20T04:07:41.536Z`
 - 当前资产累计下载次数：**25**
-- 本次记录新增下载次数：**3**
+- 本次记录新增下载次数：**0**
 
 | Release tag | 资产 | 累计下载 | 本次新增 | 状态 |
 | --- | --- | ---: | ---: | --- |
-| macos-test-0.1.6-run-29097861619 | FrameCull-macOS-arm64.zip | 17 | +1 | existing |
+| macos-test-0.1.6-run-29097861619 | FrameCull-macOS-arm64.zip | 17 | +0 | existing |
 | macos-test-0.1.6-run-29097861619 | FrameCull-macOS-x64.zip | 2 | +0 | existing |
-| v0.1.6-beta.2 | FrameCull.AI.Flash_0.1.6-beta.2_x64-setup.exe | 3 | +2 | existing |
+| v0.1.6-beta.2 | FrameCull.AI.Flash_0.1.6-beta.2_x64-setup.exe | 3 | +0 | existing |
 | v0.1.6-beta.2 | FrameCull.AI.Pro_0.1.6-beta.2_x64-setup.exe | 3 | +0 | existing |
 | v0.1.6-beta.2 | FrameCull.AI.Pro_0.1.6-beta.2_x64.msi | 0 | +0 | existing |
 
