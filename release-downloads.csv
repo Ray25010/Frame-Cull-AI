@@ -69,3 +69,8 @@ date,captured_at,release_tag,release_name,is_prerelease,asset_id,asset_name,size
 2026-07-25,2026-07-25T03:41:51.351Z,v0.1.6-beta.2,FrameCull AI 0.1.6 Beta 2,true,471646134,FrameCull.AI.Flash_0.1.6-beta.2_x64-setup.exe,69454678,3,0,existing
 2026-07-25,2026-07-25T03:41:51.351Z,v0.1.6-beta.2,FrameCull AI 0.1.6 Beta 2,true,471646133,FrameCull.AI.Pro_0.1.6-beta.2_x64-setup.exe,147200046,3,0,existing
 2026-07-25,2026-07-25T03:41:51.351Z,v0.1.6-beta.2,FrameCull AI 0.1.6 Beta 2,true,471646136,FrameCull.AI.Pro_0.1.6-beta.2_x64.msi,297022088,0,0,existing
+2026-07-26,2026-07-26T03:59:01.743Z,macos-test-0.1.6-run-29097861619,FrameCull AI Flash macOS 测试版 0.1.6,true,474239920,FrameCull-macOS-arm64.zip,70209078,17,0,existing
+2026-07-26,2026-07-26T03:59:01.743Z,macos-test-0.1.6-run-29097861619,FrameCull AI Flash macOS 测试版 0.1.6,true,474239921,FrameCull-macOS-x64.zip,70853683,2,0,existing
+2026-07-26,2026-07-26T03:59:01.743Z,v0.1.6-beta.2,FrameCull AI 0.1.6 Beta 2,true,471646134,FrameCull.AI.Flash_0.1.6-beta.2_x64-setup.exe,69454678,3,0,existing
+2026-07-26,2026-07-26T03:59:01.743Z,v0.1.6-beta.2,FrameCull AI 0.1.6 Beta 2,true,471646133,FrameCull.AI.Pro_0.1.6-beta.2_x64-setup.exe,147200046,3,0,existing
+2026-07-26,2026-07-26T03:59:01.743Z,v0.1.6-beta.2,FrameCull AI 0.1.6 Beta 2,true,471646136,FrameCull.AI.Pro_0.1.6-beta.2_x64.msi,297022088,0,0,existing
