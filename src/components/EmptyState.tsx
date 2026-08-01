@@ -12,6 +12,7 @@ import { ImportProgress, PhotoFilter } from '../types';
 import { AppIcon } from './ui/AppIcon';
 import { BrandLogo } from './ui/BrandLogo';
 import { glassInteractive, glassSurface, photoOverlay } from './ui/chrome';
+import { buildImportStageModel, ImportStageState } from './ui/reactBitsPilot';
 
 interface EmptyStateProps {
   theme: 'light' | 'dark';
@@ -115,7 +116,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
           {showImportProgress ? (
             <ImportProgressPanel theme={theme} language={language} progress={importProgress} />
           ) : (
-            <section className="relative min-h-[500px] overflow-hidden">
+            <section className="fc-workspace-reveal relative min-h-[500px] overflow-hidden">
               <div className={`pointer-events-none absolute inset-0 ${
                 isDark
                   ? 'bg-[radial-gradient(circle_at_50%_45%,rgba(56,189,248,0.08),transparent_30%)]'
@@ -305,12 +306,19 @@ const WorkbenchImportButton = ({
   disabled?: boolean;
 }) => {
   const isDark = theme === 'dark';
+  const updateSpotlight: React.PointerEventHandler<HTMLButtonElement> = event => {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    event.currentTarget.style.setProperty('--fc-spotlight-x', `${event.clientX - bounds.left}px`);
+    event.currentTarget.style.setProperty('--fc-spotlight-y', `${event.clientY - bounds.top}px`);
+  };
+
   return (
     <button
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className={`group flex min-h-[64px] flex-1 items-center gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-sky-300/50 disabled:pointer-events-none disabled:opacity-45 ${
+      onPointerMove={updateSpotlight}
+      className={`fc-spotlight-card group relative flex min-h-[64px] flex-1 items-center gap-3 overflow-hidden rounded-xl border px-3.5 py-2.5 text-left transition-[transform,background-color,border-color,box-shadow] duration-200 focus:outline-none focus:ring-2 focus:ring-sky-300/50 active:scale-[0.992] motion-reduce:transform-none disabled:pointer-events-none disabled:opacity-45 ${
         isDark
           ? 'border-white/[0.07] bg-white/[0.052] text-zinc-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.045)] hover:border-sky-200/20 hover:bg-white/[0.078]'
           : 'border-white/70 bg-white/68 text-slate-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)] hover:bg-white/90'
@@ -354,9 +362,10 @@ const ImportProgressPanel = ({
     : progress.phase === 'done'
       ? 100
       : 0;
+  const stageModel = buildImportStageModel(progress.phase);
 
   return (
-    <aside className={`relative overflow-hidden rounded-lg border px-4 py-3.5 ${
+    <aside className={`fc-import-progress-reveal relative overflow-hidden rounded-lg border px-4 py-3.5 ${
       isDark ? photoOverlay.dark : photoOverlay.light
     }`}>
       <div className="flex items-start justify-between gap-3">
@@ -388,29 +397,29 @@ const ImportProgressPanel = ({
                   ? 'bg-emerald-400'
                   : isDark ? 'bg-sky-300/55' : 'bg-sky-500/45'
               }`}
-              style={{ width: `${flowRailProgress(progress.phase)}%` }}
+              style={{ width: `${stageModel.railProgress}%` }}
             />
           </div>
           <div className="grid grid-cols-4">
           <ImportFlowStep
             theme={theme}
             label={text.scan}
-            state={stepState(progress.phase, 'scan')}
+            state={stageModel.states[0]}
           />
           <ImportFlowStep
             theme={theme}
             label={text.pair}
-            state={stepState(progress.phase, 'pair')}
+            state={stageModel.states[1]}
           />
           <ImportFlowStep
             theme={theme}
             label={text.metadata}
-            state={stepState(progress.phase, 'metadata')}
+            state={stageModel.states[2]}
           />
           <ImportFlowStep
             theme={theme}
             label={text.preload}
-            state={stepState(progress.phase, 'preload')}
+            state={stageModel.states[3]}
           />
           </div>
         </div>
@@ -438,16 +447,6 @@ const ImportProgressPanel = ({
   );
 };
 
-type StepState = 'waiting' | 'active' | 'done' | 'error';
-
-function stepState(phase: ImportProgress['phase'], step: 'scan' | 'pair' | 'metadata' | 'preload'): StepState {
-  if (phase === 'error') return 'error';
-  if (phase === step) return 'active';
-  if (phase === 'done') return 'done';
-  const order = ['scan', 'pair', 'metadata', 'preload'];
-  return order.indexOf(phase) > order.indexOf(step) ? 'done' : 'waiting';
-}
-
 function activePhaseLabel(phase: ImportProgress['phase'], text: typeof copy.zh) {
   if (phase === 'scan') return text.scan;
   if (phase === 'pair') return text.pair;
@@ -464,7 +463,7 @@ const ImportFlowStep = ({
 }: {
   theme: 'light' | 'dark';
   label: string;
-  state: StepState;
+  state: ImportStageState;
 }) => {
   const isDark = theme === 'dark';
   const active = state === 'active';
@@ -482,7 +481,7 @@ const ImportFlowStep = ({
     : isDark ? 'text-zinc-600' : 'text-slate-500';
 
   return (
-    <div className="relative z-10 min-w-0 px-2">
+    <div className="relative z-10 min-w-0 px-2" aria-current={active ? 'step' : undefined}>
       <div className="relative flex items-center justify-center">
         <span className={`relative z-10 flex h-4 w-4 items-center justify-center rounded-full border text-[8px] transition-colors duration-200 ${dotClass}`}>
           {done ? <AppIcon icon={Check} className="h-2.5 w-2.5" /> : active ? <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse motion-reduce:animate-none" /> : null}
@@ -494,10 +493,3 @@ const ImportFlowStep = ({
     </div>
   );
 };
-
-function flowRailProgress(phase: ImportProgress['phase']) {
-  if (phase === 'pair') return 33.333;
-  if (phase === 'metadata') return 66.666;
-  if (phase === 'preload' || phase === 'done') return 100;
-  return 0;
-}

@@ -2,6 +2,7 @@ import React from 'react';
 import { AlertTriangle, CheckCircle2, Info, X } from 'lucide-react';
 import { AppIcon } from './ui/AppIcon';
 import { glassPopover } from './ui/chrome';
+import { getNotificationEnterDelay } from './ui/reactBitsPilot';
 
 export type NotificationKind = 'success' | 'info' | 'warning' | 'error';
 
@@ -58,7 +59,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
 
   return (
     <div className="pointer-events-none fixed right-3 top-[58px] z-[130] flex w-[min(330px,calc(100vw-24px))] flex-col gap-2">
-      {notifications.map(notification => {
+      {notifications.map((notification, index) => {
         const itemTone = tone[notification.kind];
         const message = getNotificationMessage(notification);
         const hasDetail = Boolean(notification.detail);
@@ -66,9 +67,10 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
         return (
           <section
             key={notification.id}
-            className={`pointer-events-auto relative overflow-hidden rounded-[14px] border px-3 py-2.5 ${
+            className={`fc-notification-enter pointer-events-auto relative overflow-hidden rounded-[14px] border px-3 py-2.5 ${
               isDark ? glassPopover.dark : glassPopover.light
             }`}
+            style={{ animationDelay: getNotificationEnterDelay(index) }}
             role={notification.kind === 'error' || notification.kind === 'warning' ? 'alert' : 'status'}
           >
             <div className={`absolute left-3 right-3 top-0 h-px bg-gradient-to-r ${itemTone.accent}`} />
