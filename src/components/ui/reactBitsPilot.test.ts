@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildImportStageModel,
   getNotificationEnterDelay,
+  getToolbarResponsiveClasses,
   updateSpotlightPosition,
 } from './reactBitsPilot';
 
@@ -43,5 +44,14 @@ describe('React Bits UI pilot presentation', () => {
 
     expect(variables.get('--fc-spotlight-x')).toBe('125px');
     expect(variables.get('--fc-spotlight-y')).toBe('62px');
+  });
+
+  it('keeps critical toolbar actions visible below the large breakpoint', () => {
+    expect(getToolbarResponsiveClasses()).toEqual({
+      peopleButton: 'flex',
+      peopleLabel: 'hidden lg:inline',
+      compactAiStatus: 'flex lg:hidden',
+      fullAiStatus: 'hidden lg:flex',
+    });
   });
 });

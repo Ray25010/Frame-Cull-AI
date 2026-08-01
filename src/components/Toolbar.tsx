@@ -25,7 +25,9 @@ import { formatElapsedTime, getDisplayedElapsedMs } from './AiFloatingPanel';
 import { AppIcon } from './ui/AppIcon';
 import { BrandLogo } from './ui/BrandLogo';
 import { chromeGlass, glassActive, glassInteractive, glassPopover } from './ui/chrome';
-import { updateSpotlightPosition } from './ui/reactBitsPilot';
+import { getToolbarResponsiveClasses, updateSpotlightPosition } from './ui/reactBitsPilot';
+
+const toolbarResponsiveClasses = getToolbarResponsiveClasses();
 
 interface ToolbarProps {
   theme: 'light' | 'dark';
@@ -333,7 +335,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <button
           onClick={onPeopleClick}
           disabled={!onPeopleClick}
-          className={`hidden h-8 items-center gap-2 rounded-lg px-2.5 text-[12px] font-semibold transition-colors disabled:pointer-events-none disabled:opacity-35 lg:flex ${
+          className={`${toolbarResponsiveClasses.peopleButton} h-8 items-center gap-2 rounded-lg px-2.5 text-[12px] font-semibold transition-colors disabled:pointer-events-none disabled:opacity-35 ${
             peopleActive
               ? theme === 'dark'
                 ? glassActive.dark
@@ -345,7 +347,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           title={peopleToggleLabel}
         >
           <AppIcon icon={peopleToggleIcon} className="h-4 w-4" />
-          <span>{peopleToggleLabel}</span>
+          <span className={toolbarResponsiveClasses.peopleLabel}>{peopleToggleLabel}</span>
           {!peopleActive && peopleCount > 0 && (
             <span className={`rounded-full px-1.5 py-0.5 font-mono text-[10px] ${
               theme === 'dark' ? 'bg-white/[0.08] text-zinc-100' : 'bg-white/72 text-slate-800'
@@ -365,7 +367,57 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         </div>
       )}
 
-      <div className="pointer-events-none absolute inset-y-0 left-[var(--filmstrip-width)] right-[var(--inspector-width)] hidden items-center justify-center lg:flex">
+      <div className={`${toolbarResponsiveClasses.compactAiStatus} min-w-0 flex-1 items-center justify-center px-1`}>
+        <div
+          className={`fc-spotlight-surface relative flex h-8 w-full max-w-[240px] min-w-[148px] items-center gap-1.5 rounded-xl px-1.5 ${
+            theme === 'dark'
+              ? 'bg-white/[0.045] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]'
+              : 'bg-white/[0.48] shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]'
+          }`}
+          data-tauri-drag-region="false"
+          style={{ WebkitAppRegion: 'no-drag' } as any}
+          onPointerMove={updateToolbarSpotlight}
+        >
+          <button
+            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-all disabled:cursor-not-allowed disabled:opacity-35 ${aiControlButtonClass}`}
+            disabled={aiStats.total === 0}
+            onClick={aiAction.onClick}
+            title={aiAction.label}
+          >
+            <AppIcon icon={aiAction.icon} className="h-[15px] w-[15px]" />
+          </button>
+          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+            aiEngineInitializing
+              ? 'bg-cyan-200 shadow-[0_0_10px_rgba(103,232,249,0.72)]'
+              : aiProgress.running && !aiProgress.paused
+                ? 'bg-sky-300 shadow-[0_0_8px_rgba(125,211,252,0.55)]'
+                : theme === 'dark' ? 'bg-zinc-500' : 'bg-slate-400'
+          }`} />
+          <span className={`hidden shrink-0 text-[11px] font-semibold sm:inline ${theme === 'dark' ? 'text-zinc-200' : 'text-slate-700'}`}>
+            {text.aiCulling}
+          </span>
+          <div className={`h-1 min-w-[24px] flex-1 overflow-hidden rounded-full ${theme === 'dark' ? 'bg-black/38' : 'bg-slate-300/62'}`}>
+            <div
+              className={`h-full rounded-full transition-[width] duration-300 ${aiEngineInitializing ? 'ai-engine-scan bg-cyan-300' : 'bg-sky-400'}`}
+              style={{ width: `${aiDisplayPercent}%` }}
+            />
+          </div>
+          <span className={`shrink-0 text-[10px] font-semibold tabular-nums ${theme === 'dark' ? 'text-zinc-200' : 'text-slate-700'}`}>
+            {aiEngineInitializing ? text.aiEngineInitState : `${Math.min(aiProgress.processed, aiTotal)}/${aiTotal}`}
+          </span>
+          <button
+            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors ${
+              theme === 'dark' ? glassInteractive.dark : glassInteractive.light
+            }`}
+            onClick={onAiSettingsClick}
+            title={text.aiSettings}
+          >
+            <AppIcon icon={SlidersHorizontal} className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+
+      <div className={`pointer-events-none absolute inset-y-0 left-[var(--filmstrip-width)] right-[var(--inspector-width)] items-center justify-center ${toolbarResponsiveClasses.fullAiStatus}`}>
         <div
           className={`fc-spotlight-surface pointer-events-auto relative flex h-8 w-[min(430px,calc(100%-24px))] min-w-[280px] items-center gap-2 rounded-xl px-2 ${
             theme === 'dark'

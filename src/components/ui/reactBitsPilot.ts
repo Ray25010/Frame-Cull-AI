@@ -40,6 +40,15 @@ export function getNotificationEnterDelay(index: number) {
   return `${Math.min(Math.max(index, 0), 4) * 45}ms`;
 }
 
+export function getToolbarResponsiveClasses() {
+  return {
+    peopleButton: 'flex',
+    peopleLabel: 'hidden lg:inline',
+    compactAiStatus: 'flex lg:hidden',
+    fullAiStatus: 'hidden lg:flex',
+  } as const;
+}
+
 interface SpotlightTarget {
   getBoundingClientRect(): { left: number; top: number };
   style: { setProperty(name: string, value: string): void };
