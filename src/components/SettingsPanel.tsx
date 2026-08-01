@@ -31,6 +31,7 @@ import { ThemeMode, ResolvedTheme } from '../hooks/useTheme';
 import ShortcutSettings from './ShortcutSettings';
 import { AppIcon } from './ui/AppIcon';
 import { chromeGlass, glassInteractive, glassSubtle, modalBackdrop } from './ui/chrome';
+import { updateSpotlightPosition } from './ui/reactBitsPilot';
 import { APP_VERSION, IS_PRO_EDITION, PRODUCT_DISPLAY_NAME, PRODUCT_FOOTER } from '../utils/appInfo';
 import { readStorage } from '../utils/storage';
 import type { AppCacheUsage } from '../utils/cacheMaintenance';
@@ -47,6 +48,10 @@ import {
 } from '../utils/proInfer';
 
 const LIGHTROOM_PATH_STORAGE_KEY = 'framecull-lightroom-classic-path';
+
+const updateSettingsSpotlight: React.PointerEventHandler<HTMLElement> = event => {
+  updateSpotlightPosition(event.currentTarget, event.clientX, event.clientY);
+};
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -657,7 +662,8 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
             <button
               type="button"
               onClick={() => setView('about')}
-              className={`w-full rounded-lg border p-4 text-left transition-colors ${
+              onPointerMove={updateSettingsSpotlight}
+              className={`fc-spotlight-surface relative w-full rounded-lg border p-4 text-left transition-colors ${
                 theme === 'dark'
                   ? `${glassSubtle.dark} hover:bg-white/[0.06]`
                   : 'border-slate-400/24 bg-slate-100/[0.62] shadow-[inset_0_1px_0_rgba(255,255,255,0.78)] hover:bg-white/68'
@@ -709,7 +715,9 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
             {cacheMaintenanceSection}
 
             <SettingsSection theme={theme} icon={MonitorCog} title={text.lightroom} description={text.lightroomDescription} separated>
-              <div className={`rounded-lg border p-3 ${
+              <div
+                onPointerMove={updateSettingsSpotlight}
+                className={`fc-spotlight-surface relative rounded-lg border p-3 ${
                 theme === 'dark'
                   ? glassSubtle.dark
                   : 'border-slate-400/30 bg-slate-100/[0.62] shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]'
@@ -742,7 +750,9 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
             {IS_PRO_EDITION && (
               <SettingsSection theme={theme} icon={Cpu} title={text.proModel} description={text.proModelDescription} separated>
-                <div className={`rounded-lg border p-3 ${
+                <div
+                  onPointerMove={updateSettingsSpotlight}
+                  className={`fc-spotlight-surface relative rounded-lg border p-3 ${
                   theme === 'dark'
                     ? glassSubtle.dark
                     : 'border-slate-400/30 bg-slate-100/[0.62] shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]'

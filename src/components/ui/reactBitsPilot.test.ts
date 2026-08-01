@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { buildImportStageModel, getNotificationEnterDelay } from './reactBitsPilot';
+import {
+  buildImportStageModel,
+  getNotificationEnterDelay,
+  updateSpotlightPosition,
+} from './reactBitsPilot';
 
 describe('React Bits UI pilot presentation', () => {
   it('marks earlier import stages done and the current stage active', () => {
@@ -24,5 +28,20 @@ describe('React Bits UI pilot presentation', () => {
     expect(getNotificationEnterDelay(0)).toBe('0ms');
     expect(getNotificationEnterDelay(3)).toBe('135ms');
     expect(getNotificationEnterDelay(9)).toBe('180ms');
+  });
+
+  it('translates viewport coordinates into local spotlight variables', () => {
+    const variables = new Map<string, string>();
+    const target = {
+      getBoundingClientRect: () => ({ left: 20, top: 30 }),
+      style: {
+        setProperty: (name: string, value: string) => variables.set(name, value),
+      },
+    };
+
+    updateSpotlightPosition(target, 145, 92);
+
+    expect(variables.get('--fc-spotlight-x')).toBe('125px');
+    expect(variables.get('--fc-spotlight-y')).toBe('62px');
   });
 });

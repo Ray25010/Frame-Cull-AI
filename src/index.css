@@ -36,13 +36,20 @@
     backdrop-filter: blur(24px) saturate(150%);
   }
 
-  .fc-spotlight-card {
+  .fc-spotlight-card,
+  .fc-spotlight-surface {
     --fc-spotlight-x: 50%;
     --fc-spotlight-y: 50%;
+    --fc-spotlight-strength: 1;
     isolation: isolate;
   }
 
-  .fc-spotlight-card::before {
+  .fc-spotlight-surface {
+    --fc-spotlight-strength: 0.78;
+  }
+
+  .fc-spotlight-card::before,
+  .fc-spotlight-surface::before {
     content: "";
     position: absolute;
     inset: 0;
@@ -58,14 +65,18 @@
     transition: opacity 180ms ease-out;
   }
 
-  .fc-spotlight-card > * {
+  .fc-spotlight-card > *,
+  .fc-spotlight-surface > * {
     position: relative;
     z-index: 1;
   }
 
   .fc-spotlight-card:hover::before,
-  .fc-spotlight-card:focus-visible::before {
-    opacity: 1;
+  .fc-spotlight-card:focus-visible::before,
+  .fc-spotlight-surface:hover::before,
+  .fc-spotlight-surface:focus-visible::before,
+  .fc-spotlight-surface:focus-within::before {
+    opacity: var(--fc-spotlight-strength);
   }
 
   .fc-workspace-reveal {
@@ -412,7 +423,9 @@ pre,
   }
 
   .fc-spotlight-card,
-  .fc-spotlight-card::before {
+  .fc-spotlight-card::before,
+  .fc-spotlight-surface,
+  .fc-spotlight-surface::before {
     transition: none;
   }
 

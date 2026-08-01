@@ -39,3 +39,18 @@ export function buildImportStageModel(phase: ImportProgressPhase) {
 export function getNotificationEnterDelay(index: number) {
   return `${Math.min(Math.max(index, 0), 4) * 45}ms`;
 }
+
+interface SpotlightTarget {
+  getBoundingClientRect(): { left: number; top: number };
+  style: { setProperty(name: string, value: string): void };
+}
+
+export function updateSpotlightPosition(
+  target: SpotlightTarget,
+  clientX: number,
+  clientY: number,
+) {
+  const bounds = target.getBoundingClientRect();
+  target.style.setProperty('--fc-spotlight-x', `${clientX - bounds.left}px`);
+  target.style.setProperty('--fc-spotlight-y', `${clientY - bounds.top}px`);
+}

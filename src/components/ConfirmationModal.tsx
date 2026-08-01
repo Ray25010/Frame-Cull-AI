@@ -25,6 +25,11 @@ import {
 import { Language } from '../i18n';
 import { AppIcon } from './ui/AppIcon';
 import { chromeGlass, glassSubtle, glassPopover, modalBackdrop } from './ui/chrome';
+import { updateSpotlightPosition } from './ui/reactBitsPilot';
+
+const updateWorkflowSpotlight: React.PointerEventHandler<HTMLElement> = event => {
+  updateSpotlightPosition(event.currentTarget, event.clientX, event.clientY);
+};
 
 interface ConfirmationModalProps {
   groups: PhotoGroup[];
@@ -714,7 +719,8 @@ const SegmentedChoice = <T extends string>({
             type="button"
             title={option.hint}
             onClick={() => onChange(option.value)}
-            className={`rounded-md px-2.5 py-2 text-left transition-colors ${
+            onPointerMove={updateWorkflowSpotlight}
+            className={`fc-spotlight-surface relative rounded-md px-2.5 py-2 text-left transition-colors ${
               active
                 ? isDark
                   ? 'bg-cyan-400/[0.11] text-zinc-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.055)]'
@@ -877,7 +883,8 @@ const MetadataChoice = ({
     <Tag
       type={onClick ? 'button' : undefined}
       onClick={onClick}
-      className={`flex w-full items-start gap-3 rounded-md px-3 py-2.5 text-left transition-colors ${
+      onPointerMove={onClick ? updateWorkflowSpotlight : undefined}
+      className={`${onClick ? 'fc-spotlight-surface relative' : ''} flex w-full items-start gap-3 rounded-md px-3 py-2.5 text-left transition-colors ${
         active
           ? isDark
             ? 'bg-cyan-400/[0.09] text-zinc-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.055)]'

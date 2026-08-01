@@ -25,6 +25,7 @@ import { formatElapsedTime, getDisplayedElapsedMs } from './AiFloatingPanel';
 import { AppIcon } from './ui/AppIcon';
 import { BrandLogo } from './ui/BrandLogo';
 import { chromeGlass, glassActive, glassInteractive, glassPopover } from './ui/chrome';
+import { updateSpotlightPosition } from './ui/reactBitsPilot';
 
 interface ToolbarProps {
   theme: 'light' | 'dark';
@@ -239,6 +240,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     return () => window.clearInterval(timer);
   }, [aiProgress.paused, aiProgress.running]);
 
+  const updateToolbarSpotlight: React.PointerEventHandler<HTMLElement> = event => {
+    updateSpotlightPosition(event.currentTarget, event.clientX, event.clientY);
+  };
+
   return (
     <nav
       className={`relative z-20 flex min-h-[48px] items-center justify-between gap-2 border-b px-2.5 [--filmstrip-width:176px] [--inspector-width:268px] xl:[--filmstrip-width:188px] xl:[--inspector-width:288px] ${
@@ -268,7 +273,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             type="button"
             disabled={isLoading}
             onClick={() => setImportOpen(open => !open)}
-            className={`flex h-8 items-center gap-2 rounded-md px-2.5 text-[12px] font-medium transition-colors disabled:opacity-35 disabled:pointer-events-none ${
+            onPointerMove={updateToolbarSpotlight}
+            className={`fc-spotlight-surface relative flex h-8 items-center gap-2 rounded-md px-2.5 text-[12px] font-medium transition-colors disabled:opacity-35 disabled:pointer-events-none ${
               importOpen
                 ? theme === 'dark'
                   ? glassActive.dark
@@ -361,13 +367,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
       <div className="pointer-events-none absolute inset-y-0 left-[var(--filmstrip-width)] right-[var(--inspector-width)] hidden items-center justify-center lg:flex">
         <div
-          className={`pointer-events-auto relative flex h-8 w-[min(430px,calc(100%-24px))] min-w-[280px] items-center gap-2 rounded-xl px-2 ${
+          className={`fc-spotlight-surface pointer-events-auto relative flex h-8 w-[min(430px,calc(100%-24px))] min-w-[280px] items-center gap-2 rounded-xl px-2 ${
             theme === 'dark'
               ? 'bg-white/[0.025] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]'
               : 'bg-white/[0.34] shadow-[inset_0_1px_0_rgba(255,255,255,0.62)]'
           }`}
           data-tauri-drag-region="false"
           style={{ WebkitAppRegion: 'no-drag' } as any}
+          onPointerMove={updateToolbarSpotlight}
           onMouseEnter={() => setAiProgressHover(true)}
           onMouseLeave={() => setAiProgressHover(false)}
         >
@@ -475,7 +482,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <button
           onClick={onExportClick}
           disabled={selectionCount === 0}
-          className={`flex h-8 items-center gap-2 rounded-lg px-3 text-[12px] font-semibold transition-all disabled:opacity-35 disabled:pointer-events-none ${
+          onPointerMove={updateToolbarSpotlight}
+          className={`fc-spotlight-surface relative flex h-8 items-center gap-2 rounded-lg px-3 text-[12px] font-semibold transition-all disabled:opacity-35 disabled:pointer-events-none ${
             theme === 'dark'
               ? 'bg-white/[0.065] text-zinc-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.055)] hover:bg-white/[0.10] hover:text-white'
               : 'bg-white/64 text-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.76)] hover:bg-white/80 hover:text-slate-950'
@@ -488,7 +496,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
         <button
           onClick={onSettingsClick}
-          className={`flex h-9 w-9 items-center justify-center rounded-lg transition-all ${
+          onPointerMove={updateToolbarSpotlight}
+          className={`fc-spotlight-surface relative flex h-9 w-9 items-center justify-center rounded-lg transition-all ${
             theme === 'dark'
               ? glassInteractive.dark
               : glassInteractive.light

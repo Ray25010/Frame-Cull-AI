@@ -12,7 +12,11 @@ import { ImportProgress, PhotoFilter } from '../types';
 import { AppIcon } from './ui/AppIcon';
 import { BrandLogo } from './ui/BrandLogo';
 import { glassInteractive, glassSurface, photoOverlay } from './ui/chrome';
-import { buildImportStageModel, ImportStageState } from './ui/reactBitsPilot';
+import {
+  buildImportStageModel,
+  ImportStageState,
+  updateSpotlightPosition,
+} from './ui/reactBitsPilot';
 
 interface EmptyStateProps {
   theme: 'light' | 'dark';
@@ -307,9 +311,7 @@ const WorkbenchImportButton = ({
 }) => {
   const isDark = theme === 'dark';
   const updateSpotlight: React.PointerEventHandler<HTMLButtonElement> = event => {
-    const bounds = event.currentTarget.getBoundingClientRect();
-    event.currentTarget.style.setProperty('--fc-spotlight-x', `${event.clientX - bounds.left}px`);
-    event.currentTarget.style.setProperty('--fc-spotlight-y', `${event.clientY - bounds.top}px`);
+    updateSpotlightPosition(event.currentTarget, event.clientX, event.clientY);
   };
 
   return (
