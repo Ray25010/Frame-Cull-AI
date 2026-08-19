@@ -130,6 +130,25 @@ if (input.edition === "pro" && input.platform === "windows") {
   }
 }
 
+if (input.edition === "pro" && input.platform === "macos") {
+  const manifestPath = "src-tauri/vendor/rawtherapee/rawtherapee-5.12-macos-universal.json";
+  const manifest = readJson(manifestPath);
+  const configResources = config.bundle?.resources ?? {};
+  const rawApp = "vendor/rawtherapee/macos-universal/RawTherapee.app";
+  if (configResources[rawApp] !== "raw-engines/rawtherapee/macos-universal/RawTherapee.app") {
+    fail(`${configPath}: missing bundled macOS RawTherapee.app mapping`);
+  }
+  if (manifest.artifact !== "RawTherapee_macOS_15.4_Universal_5.12.zip") {
+    fail(`${manifestPath}: unexpected artifact`);
+  }
+  if (!/^https:\/\/github\.com\/RawTherapee\/RawTherapee\/releases\/download\//.test(manifest.sourceUrl ?? "")) {
+    fail(`${manifestPath}: sourceUrl must be an official RawTherapee release`);
+  }
+  if (manifest.sha256 !== "2f284d1c023f53f0c492aecc3f7635d6b7807ef22d5413ee55715d81e81fe688") {
+    fail(`${manifestPath}: unexpected archive SHA256`);
+  }
+}
+
 for (const path of ["src", "public"]) walkFrontend(path);
 
 if (failures.length > 0) {

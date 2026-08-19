@@ -23,6 +23,8 @@
       "vendor/onnxruntime/macos-x64/LICENSE": "onnxruntime/macos-x64/LICENSE",
       "vendor/onnxruntime/macos-x64/ThirdPartyNotices.txt": "onnxruntime/macos-x64/ThirdPartyNotices.txt",
       "vendor/onnxruntime/macos-x64/VERSION_NUMBER": "onnxruntime/macos-x64/VERSION_NUMBER"
+      ,"vendor/rawtherapee/macos-universal/RawTherapee.app": "raw-engines/rawtherapee/macos-universal/RawTherapee.app"
+      ,"vendor/rawtherapee/THIRD_PARTY_NOTICES.txt": "raw-engines/rawtherapee/THIRD_PARTY_NOTICES.txt"
     },
     "macOS": {
       "frameworks": ["vendor/onnxruntime/macos-x64/libonnxruntime.1.23.2.dylib"]

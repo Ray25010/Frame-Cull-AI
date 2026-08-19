@@ -70,7 +70,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node tools/macos/check-pro-installer-contract.mjs --workflow
+          node tools/check-all-installers-contract.mjs --edition pro --platform macos
 
       - name: Prepare official Intel ONNX Runtime
         if: matrix.rust_target == 'x86_64-apple-darwin'
@@ -107,9 +107,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          /bin/zsh -n tools/macos/FrameCull-Pro-Install.command
-          /bin/zsh -n tools/macos/FrameCull-Pro-Install.test.zsh
-          node tools/macos/check-pro-installer-contract.mjs --source
+          node tools/check-all-installers-contract.mjs --edition pro --platform macos
           node -e '
             const fs = require("node:fs");
             const model = "pro-models/semantic_student_v2_grounded_convnext_v14_five_mountain_region/model.int8.onnx";
@@ -133,12 +131,11 @@ jobs:
             test -f src-tauri/vendor/onnxruntime/macos-x64/libonnxruntime.1.23.2.dylib
           fi
 
-      - name: Run Pro installer state and Rust tests
+      - name: Run Pro Rust tests
         if: matrix.rust_target == 'aarch64-apple-darwin'
         shell: bash
         run: |
           set -euo pipefail
-          /bin/zsh tools/macos/FrameCull-Pro-Install.test.zsh
           cargo test --manifest-path src-tauri/Cargo.toml --target "${{ matrix.rust_target }}" --lib tests::macos_rawtherapee_candidates_match_supported_priority_order -- --exact
 
       - name: Download official RawTherapee installer
@@ -156,8 +153,25 @@ jobs:
           curl --fail --location --retry 3 --output "${archive}" "${source_url}"
           echo "${expected_sha}  ${archive}" | /usr/bin/shasum -a 256 --check
 
-          echo "archive_path=${archive}" >> "${GITHUB_OUTPUT}"
-          echo "artifact_name=${artifact}" >> "${GITHUB_OUTPUT}"
+          extract_root="${RUNNER_TEMP}/rawtherapee-extracted"
+          mkdir -p "${extract_root}" "src-tauri/vendor/rawtherapee/macos-universal"
+          /usr/bin/ditto -x -k "${archive}" "${extract_root}"
+          payload="${extract_root}/RawTherapee_macOS_15.4_Universal_5.12_folder"
+          test -d "${payload}"
+          test -f "${payload}/RawTherapee_macOS_15.4_Universal_5.12.dmg"
+          test -x "${payload}/rawtherapee-cli"
+
+          mount_point="${RUNNER_TEMP}/rawtherapee-mount"
+          mkdir -p "${mount_point}"
+          device="$(/usr/bin/hdiutil attach -nobrowse -readonly -mountpoint "${mount_point}" "${payload}/RawTherapee_macOS_15.4_Universal_5.12.dmg" | awk 'END { print $1 }')"
+          trap '/usr/bin/hdiutil detach "${mount_point}" -force >/dev/null 2>&1 || true' EXIT
+          test -d "${mount_point}/RawTherapee.app"
+          /usr/bin/ditto "${mount_point}/RawTherapee.app" "src-tauri/vendor/rawtherapee/macos-universal/RawTherapee.app"
+          /usr/bin/ditto "${payload}/rawtherapee-cli" "src-tauri/vendor/rawtherapee/macos-universal/RawTherapee.app/Contents/MacOS/rawtherapee-cli"
+          chmod +x "src-tauri/vendor/rawtherapee/macos-universal/RawTherapee.app/Contents/MacOS/rawtherapee-cli"
+          test -x "src-tauri/vendor/rawtherapee/macos-universal/RawTherapee.app/Contents/MacOS/rawtherapee-cli"
+          /usr/bin/hdiutil detach "${mount_point}" -force >/dev/null
+          trap - EXIT
 
       - name: Build Tauri Pro app
         run: pnpm exec tauri build --features pro --config "${{ matrix.tauri_config }}" --target "${{ matrix.rust_target }}"
@@ -168,8 +182,6 @@ jobs:
           RUST_TARGET: ${{ matrix.rust_target }}
           EXPECTED_ARCH: ${{ matrix.expected_arch }}
           ARTIFACT_LABEL: ${{ matrix.artifact_label }}
-          RAWTHERAPEE_ARCHIVE: ${{ steps.rawtherapee.outputs.archive_path }}
-          RAWTHERAPEE_ARTIFACT: ${{ steps.rawtherapee.outputs.artifact_name }}
         shell: bash
         run: |
           set -euo pipefail
@@ -186,8 +198,10 @@ jobs:
           test -x "${app_binary}"
           test -f "${model_root}/model.int8.onnx"
           test -f "${model_root}/manifest.int8.json"
-          test -f "${RAWTHERAPEE_ARCHIVE}"
-          test "$(basename "${RAWTHERAPEE_ARCHIVE}")" = "${RAWTHERAPEE_ARTIFACT}"
+          raw_app="${app_path}/Contents/Resources/raw-engines/rawtherapee/macos-universal/RawTherapee.app"
+          raw_cli="${raw_app}/Contents/MacOS/rawtherapee-cli"
+          test -d "${raw_app}"
+          test -x "${raw_cli}"
           test ! -e "${app_path}/Contents/Resources/raw-engines/rawtherapee/windows-x64"
           ! find "${app_path}" -type f -name 'pro-infer-bench*' -print -quit | grep -q .
 
@@ -206,6 +220,8 @@ jobs:
           /usr/bin/codesign --verify --deep --strict --verbose=2 "${app_path}"
           /usr/bin/codesign -dvv "${app_path}"
           /usr/bin/otool -L "${app_binary}"
+          /usr/bin/file "${raw_cli}"
+          "${raw_cli}" -v 2>&1 | grep -E '^RawTherapee, version [0-9]'
 
           if [[ "${RUST_TARGET}" == "x86_64-apple-darwin" ]]; then
             ort_dylib="${app_path}/Contents/Frameworks/libonnxruntime.1.23.2.dylib"
@@ -220,58 +236,12 @@ jobs:
           archive_path="${GITHUB_WORKSPACE}/FrameCull-Pro-${ARTIFACT_LABEL}.zip"
           mkdir -p "${stage_dir}"
           cp "${dmg_path}" "${stage_dir}/"
-          cp "${RAWTHERAPEE_ARCHIVE}" "${stage_dir}/${RAWTHERAPEE_ARTIFACT}"
-          cp tools/macos/FrameCull-Pro-Install.command "${stage_dir}/"
           cp tools/macos/README-FrameCull-Pro-macOS-first-launch.txt "${stage_dir}/"
-          chmod +x "${stage_dir}/FrameCull-Pro-Install.command"
 
           (
             cd "${stage_dir}"
-            /usr/bin/shasum -a 256 ./*.dmg "${RAWTHERAPEE_ARTIFACT}" FrameCull-Pro-Install.command README-FrameCull-Pro-macOS-first-launch.txt > SHA256SUMS.txt
-            /bin/zsh ./FrameCull-Pro-Install.command --verify-only
+            /usr/bin/shasum -a 256 ./*.dmg README-FrameCull-Pro-macOS-first-launch.txt > SHA256SUMS.txt
           )
-
-          installer_path="${stage_dir}/FrameCull-Pro-Install.command"
-          FRAMECULL_INSTALLER_SOURCE_ONLY=1 /bin/zsh -c '
-            set -euo pipefail
-            source "$0"
-            WORK_DIR="$(/usr/bin/mktemp -d "${RUNNER_TEMP}/framecull-pro-mount-smoke.XXXXXX")"
-            post_cleanup_info=""
-            cleanup_mount_smoke() {
-              cleanup || :
-              [[ -z "${post_cleanup_info}" ]] || /bin/rm -f -- "${post_cleanup_info}"
-            }
-            trap cleanup_mount_smoke EXIT
-            verify_package_contract
-            extract_rawtherapee_payload
-            print -u2 -r -- "Mount smoke: attaching FrameCull DMG"
-            attach_dmg_readonly "${FRAME_DMG}"
-            [[ -d "${ATTACHED_MOUNT_POINT}/FrameCull AI Pro.app" ]]
-            print -u2 -r -- "Mount smoke: attaching RawTherapee DMG"
-            attach_dmg_readonly "${RAW_PAYLOAD_DMG}"
-            [[ -d "${ATTACHED_MOUNT_POINT}/RawTherapee.app" ]]
-            cleanup
-            post_cleanup_info="$(/usr/bin/mktemp "${RUNNER_TEMP}/framecull-pro-post-cleanup.XXXXXX")"
-            run_hdiutil info -plist >"${post_cleanup_info}"
-            parse_plist_devices "${post_cleanup_info}" "${FRAME_DMG}"
-            (( ${#PARSED_PLIST_DEVICES[@]} == 0 ))
-            parse_plist_devices "${post_cleanup_info}" "${RAW_PAYLOAD_DMG}"
-            (( ${#PARSED_PLIST_DEVICES[@]} == 0 ))
-            /bin/rm -f -- "${post_cleanup_info}"
-            post_cleanup_info=""
-            trap - EXIT
-          ' "${installer_path}"
-
-          tamper_dir="${RUNNER_TEMP}/FrameCull-Pro-${ARTIFACT_LABEL}-tampered"
-          /usr/bin/ditto "${stage_dir}" "${tamper_dir}"
-          /usr/bin/printf '\nTamper check sentinel.\n' >> "${tamper_dir}/README-FrameCull-Pro-macOS-first-launch.txt"
-          if (
-            cd "${tamper_dir}" &&
-            /bin/zsh ./FrameCull-Pro-Install.command --verify-only
-          ); then
-            echo "Tampered package unexpectedly passed verify-only."
-            exit 1
-          fi
 
           /usr/bin/ditto -c -k --sequesterRsrc --keepParent "${stage_dir}" "${archive_path}"
           echo "archive_path=${archive_path}" >> "${GITHUB_OUTPUT}"
@@ -285,6 +255,7 @@ jobs:
           retention-days: 14
 
   publish-pro-draft:
+    if: ${{ false }}
     name: Publish Pro draft release
     needs: build-macos-pro-test
     runs-on: ubuntu-latest

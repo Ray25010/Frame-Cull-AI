@@ -25,6 +25,7 @@ src-tauri/vendor/nvidia-cuda/
 src-tauri/vendor/onnxruntime/macos-x64/
 src-tauri/vendor/rawtherapee/downloads/
 src-tauri/vendor/rawtherapee/windows-x64/
+src-tauri/vendor/rawtherapee/macos-universal/
 
 # Editor directories and files
 .vscode/*

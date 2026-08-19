@@ -19,6 +19,8 @@
       "pro-models/placeholder/manifest.json": "pro-models/placeholder/manifest.json",
       "pro-models/semantic_student_v2_grounded_convnext_v14_five_mountain_region/model.int8.onnx": "pro-models/semantic_student_v2_grounded_convnext_v14_five_mountain_region/model.int8.onnx",
       "pro-models/semantic_student_v2_grounded_convnext_v14_five_mountain_region/manifest.int8.json": "pro-models/semantic_student_v2_grounded_convnext_v14_five_mountain_region/manifest.int8.json"
+      ,"vendor/rawtherapee/macos-universal/RawTherapee.app": "raw-engines/rawtherapee/macos-universal/RawTherapee.app"
+      ,"vendor/rawtherapee/THIRD_PARTY_NOTICES.txt": "raw-engines/rawtherapee/THIRD_PARTY_NOTICES.txt"
     }
   }
 }

@@ -475,6 +475,9 @@ const RAWTHERAPEE_BUNDLED_VERSION: &str = "5.12";
 const RAWTHERAPEE_BUNDLED_RESOURCE_CLI: &str =
     "raw-engines/rawtherapee/windows-x64/RawTherapee_5.12_win64_release/rawtherapee-cli.exe";
 #[cfg(feature = "pro")]
+const RAWTHERAPEE_BUNDLED_MACOS_RESOURCE_CLI: &str =
+    "raw-engines/rawtherapee/macos-universal/RawTherapee.app/Contents/MacOS/rawtherapee-cli";
+#[cfg(feature = "pro")]
 const RAWTHERAPEE_DEV_VENDOR_CLI: &str =
     "vendor/rawtherapee/windows-x64/RawTherapee_5.12_win64_release/rawtherapee-cli.exe";
 const IMPORT_BATCH_SIZE: usize = 75;
@@ -3798,11 +3801,18 @@ fn bundled_rawtherapee_candidates(app: &tauri::AppHandle) -> Vec<PathBuf> {
     let mut candidates = Vec::new();
 
     if let Ok(resource_dir) = app.path().resource_dir() {
+        #[cfg(target_os = "macos")]
+        candidates.push(resource_dir.join(RAWTHERAPEE_BUNDLED_MACOS_RESOURCE_CLI));
         candidates.push(resource_dir.join(RAWTHERAPEE_BUNDLED_RESOURCE_CLI));
     }
 
     if let Ok(current_exe) = std::env::current_exe() {
         if let Some(dir) = current_exe.parent() {
+            #[cfg(target_os = "macos")]
+            candidates.push(
+                dir.join("../Resources")
+                    .join(RAWTHERAPEE_BUNDLED_MACOS_RESOURCE_CLI),
+            );
             candidates.push(dir.join(RAWTHERAPEE_BUNDLED_RESOURCE_CLI));
             candidates.push(
                 dir.join("../Resources")

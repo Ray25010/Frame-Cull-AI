@@ -194,6 +194,35 @@ jobs:
           echo "ORT_PREFER_DYNAMIC_LINK=1" >> "${GITHUB_ENV}"
           echo 'CARGO_TARGET_X86_64_APPLE_DARWIN_RUSTFLAGS=-C link-arg=-Wl,-rpath,@executable_path/../Frameworks' >> "${GITHUB_ENV}"
 
+      - name: Prepare pinned RawTherapee bundle
+        if: matrix.edition == 'pro'
+        shell: bash
+        run: |
+          set -euo pipefail
+          manifest="src-tauri/vendor/rawtherapee/rawtherapee-5.12-macos-universal.json"
+          artifact="$(node -e 'const m=JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8")); process.stdout.write(m.artifact)' "${manifest}")"
+          source_url="$(node -e 'const m=JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8")); process.stdout.write(m.sourceUrl)' "${manifest}")"
+          expected_sha="$(node -e 'const m=JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8")); process.stdout.write(m.sha256)' "${manifest}")"
+          archive="${RUNNER_TEMP}/${artifact}"
+          extracted="${RUNNER_TEMP}/rawtherapee-extracted"
+          curl --fail --location --retry 3 --output "${archive}" "${source_url}"
+          echo "${expected_sha}  ${archive}" | /usr/bin/shasum -a 256 --check
+          mkdir -p "${extracted}" "src-tauri/vendor/rawtherapee/macos-universal"
+          /usr/bin/ditto -x -k "${archive}" "${extracted}"
+          payload="${extracted}/RawTherapee_macOS_15.4_Universal_5.12_folder"
+          test -f "${payload}/RawTherapee_macOS_15.4_Universal_5.12.dmg"
+          test -x "${payload}/rawtherapee-cli"
+          mount_point="${RUNNER_TEMP}/rawtherapee-mount"
+          mkdir -p "${mount_point}"
+          /usr/bin/hdiutil attach -nobrowse -readonly -mountpoint "${mount_point}" "${payload}/RawTherapee_macOS_15.4_Universal_5.12.dmg"
+          trap '/usr/bin/hdiutil detach "${mount_point}" -force >/dev/null 2>&1 || true' EXIT
+          test -d "${mount_point}/RawTherapee.app"
+          /usr/bin/ditto "${mount_point}/RawTherapee.app" "src-tauri/vendor/rawtherapee/macos-universal/RawTherapee.app"
+          /usr/bin/ditto "${payload}/rawtherapee-cli" "src-tauri/vendor/rawtherapee/macos-universal/RawTherapee.app/Contents/MacOS/rawtherapee-cli"
+          chmod +x "src-tauri/vendor/rawtherapee/macos-universal/RawTherapee.app/Contents/MacOS/rawtherapee-cli"
+          /usr/bin/hdiutil detach "${mount_point}" -force >/dev/null
+          trap - EXIT
+
       - name: Build installer
         run: pnpm exec tauri build ${{ matrix.features }} --config "${{ matrix.config }}" --target "${{ matrix.rust_target }}"
 
