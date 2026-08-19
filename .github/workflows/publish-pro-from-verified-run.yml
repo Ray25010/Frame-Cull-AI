@@ -1,0 +1,68 @@
+name: Publish Pro From Verified Run
+
+permissions:
+  actions: read
+  contents: write
+
+on:
+  push:
+    branches:
+      - "codex/release-0.1.6-ui-no-beauty"
+    paths:
+      - ".github/workflows/publish-pro-from-verified-run.yml"
+
+jobs:
+  publish-pro:
+    name: Publish verified Pro artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Pro artifacts from verified matrix
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 32216774744
+          pattern: FrameCull-Pro-*
+          path: packages
+          merge-multiple: false
+
+      - name: Prepare Pro release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          while IFS= read -r -d '' file; do
+            parent="$(basename "$(dirname "${file}")")"
+            name="$(basename "${file}")"
+            case "${name}" in
+              SHA256SUMS.txt) name="${parent}-SHA256SUMS.txt" ;;
+            esac
+            cp "${file}" "release-assets/${parent}-${name}"
+          done < <(find packages -type f \( -name '*.exe' -o -name '*.msi' -o -name '*.dmg' -o -name 'README-FrameCull-Pro-macOS-first-launch.txt' -o -name 'SHA256SUMS.txt' \) -print0)
+          test -n "$(find release-assets -type f -print -quit)"
+          sha256sum release-assets/*
+
+      - name: Publish Pro prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="pro-ui-0.1.6-run-32216774744"
+          notes="${RUNNER_TEMP}/pro-release-notes.md"
+          cat > "${notes}" <<EOF
+          # FrameCull AI Pro 0.1.6 UI 更新测试版
+
+          本 prerelease 复用已成功完成的 GitHub Actions Run 32216774744，源提交为 \
+          `b35e87a6300464f0e0460973db41ad2db5d77b26`。
+
+          - Windows Pro x64、macOS Pro arm64、macOS Pro x64 均已通过构建和产物检查。
+          - macOS Pro 已将 RawTherapee 5.12 内置到 FrameCull AI Pro.app，用户无需另行安装或授权。
+          - 本轮不包含 Beauty/美颜功能和 UI。
+          - macOS 测试包未进行 Apple Developer ID 签名和公证。
+          EOF
+          gh release create "${tag}" release-assets/* \
+            --repo "${GITHUB_REPOSITORY}" \
+            --prerelease \
+            --target "b35e87a6300464f0e0460973db41ad2db5d77b26" \
+            --title "FrameCull AI Pro 0.1.6 UI 更新测试版（Run 32216774744）" \
+            --notes-file "${notes}"
