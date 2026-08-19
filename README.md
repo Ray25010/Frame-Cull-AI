@@ -17,7 +17,7 @@
   </p>
 
   <p>
-    <img alt="Release" src="https://img.shields.io/badge/release-v0.1.6_beta.2-2ea8ff" />
+    <img alt="Release" src="https://img.shields.io/badge/release-v0.1.6_prerelease-2ea8ff" />
     <img alt="Windows" src="https://img.shields.io/badge/Windows-10%20%2F%2011-0078d4" />
     <img alt="macOS" src="https://img.shields.io/badge/macOS-Apple%20Silicon%20%2F%20Intel-000000" />
     <img alt="Local AI" src="https://img.shields.io/badge/AI-local%20first-10b981" />
@@ -48,17 +48,20 @@ Flash 版本轻量快速，可在核显机型上流畅运行；Pro 版本则提�
 
 ### 📦 下载
 
-Windows内测版本：  
+最新 UI 更新测试版：
+[Flash 0.1.6 prerelease](https://github.com/Ray25010/Frame-Cull-AI/releases/tag/flash-ui-0.1.6-run-32216774744) · [Pro 0.1.6 prerelease](https://github.com/Ray25010/Frame-Cull-AI/releases/tag/pro-ui-0.1.6-run-32216774744)
 
-- [下载 Flash Windows 安装包](https://github.com/Ray25010/Frame-Cull-AI/releases/download/v0.1.6-beta.2/FrameCull.AI.Flash_0.1.6-beta.2_x64-setup.exe)
-- [下载 Pro Windows 安装包](https://github.com/Ray25010/Frame-Cull-AI/releases/download/v0.1.6-beta.2/FrameCull.AI.Pro_0.1.6-beta.2_x64-setup.exe)
+#### Windows
 
-#### macOS Flash 0.1.6 测试版
+- [Flash x64 EXE](https://github.com/Ray25010/Frame-Cull-AI/releases/download/flash-ui-0.1.6-run-32216774744/FrameCull-Flash-Windows-x64-FrameCull.AI.Flash_0.1.6_x64-setup.exe) · [Flash x64 MSI](https://github.com/Ray25010/Frame-Cull-AI/releases/download/flash-ui-0.1.6-run-32216774744/FrameCull-Flash-Windows-x64-FrameCull.AI.Flash_0.1.6_x64_en-US.msi)
+- [Pro x64 EXE](https://github.com/Ray25010/Frame-Cull-AI/releases/download/pro-ui-0.1.6-run-32216774744/FrameCull-Pro-Windows-x64-FrameCull.AI.Pro_0.1.6_x64-setup.exe) · [Pro x64 MSI](https://github.com/Ray25010/Frame-Cull-AI/releases/download/pro-ui-0.1.6-run-32216774744/FrameCull-Pro-Windows-x64-FrameCull.AI.Pro_0.1.6_x64_en-US.msi)
 
-- [Apple Silicon（M1 / M2 / M3 / M4 等）下载 arm64 版](https://github.com/Ray25010/Frame-Cull-AI/releases/download/macos-test-0.1.6-run-29097861619/FrameCull-macOS-arm64.zip)
-- [Intel Mac 下载 x64 版](https://github.com/Ray25010/Frame-Cull-AI/releases/download/macos-test-0.1.6-run-29097861619/FrameCull-macOS-x64.zip)
+#### macOS
 
-> macOS 测试包尚未经过 Apple Developer ID 公证。请根据 Mac 芯片选择正确架构，并根据下方的安装文档进行安装。
+- [Flash Apple Silicon arm64](https://github.com/Ray25010/Frame-Cull-AI/releases/download/flash-ui-0.1.6-run-32216774744/FrameCull-Flash-macOS-arm64-FrameCull.AI.Flash_0.1.6_aarch64.dmg) · [Flash Intel x64](https://github.com/Ray25010/Frame-Cull-AI/releases/download/flash-ui-0.1.6-run-32216774744/FrameCull-Flash-macOS-x64-FrameCull.AI.Flash_0.1.6_x64.dmg)
+- [Pro Apple Silicon arm64](https://github.com/Ray25010/Frame-Cull-AI/releases/download/pro-ui-0.1.6-run-32216774744/FrameCull-Pro-macOS-arm64-FrameCull.AI.Pro_0.1.6_aarch64.dmg) · [Pro Intel x64](https://github.com/Ray25010/Frame-Cull-AI/releases/download/pro-ui-0.1.6-run-32216774744/FrameCull-Pro-macOS-x64-FrameCull.AI.Pro_0.1.6_x64.dmg)
+
+> macOS 测试包尚未经过 Apple Developer ID 签名和公证。Apple Silicon Mac 请选择 arm64，Intel Mac 请选择 x64。macOS Pro 已内置 RawTherapee 5.12，无需另外安装或授权。本轮不包含 Beauty/美颜功能和 UI。
 
 ### 📚 文档与教程
 
@@ -66,17 +69,23 @@ Windows内测版本：
 - [FrameCull AI Pro v0.1.6 简介及使用教程](https://www.kdocs.cn/l/ck6O3N1pAKlA)
 - [macOS Flash 安装教程](https://www.kdocs.cn/l/csMm8cw85pTP)
 
+#### macOS 安装提示
+
+1. 根据 Mac 芯片下载 `arm64` 或 `x64` DMG。
+2. 打开 DMG，将 FrameCull AI Flash 或 FrameCull AI Pro 拖入 Applications（应用程序）。
+3. 如果 macOS 提示无法验证开发者，请在 Finder 的 Applications 中右键应用，选择“打开”，再确认一次。
+4. Pro 版已经内置 RawTherapee 5.12，不需要单独安装 RawTherapee，也不需要额外授权。
 
 ### 💻 系统要求
 
-| 项目 | Flash Windows | Flash macOS | Pro Windows |
-| --- | --- | --- | --- |
-| 系统 | Windows 10 / 11 64 位 | 建议 macOS 12 Monterey 或更高，推荐 macOS 13 及以上 | Windows 10 / 11 64 位，推荐 Windows 11 |
-| 架构 | x64 | Apple Silicon 使用 arm64 包；Intel Mac 使用 x64 包 | x64 |
-| CPU | 4 核起，推荐 8 核或更高 | Apple Silicon，或 4 核及以上 Intel 处理器 | 8 核起，推荐 12 核或更高 |
-| 内存 | 8 GB 起，推荐 16 GB | 8 GB 起，推荐 16 GB | 16 GB 起，推荐 32 GB 或更高 |
-| 显卡 | 无独显要求，集成显卡可运行 | 无独显要求，使用系统图形与 WebKit | NVIDIA GTX 1660 / RTX 2060 / RTX 3050 及以上可用，推荐 RTX 3060 / RTX 4060 及以上；无独显时可 CPU 兜底但会更慢 |
-| 磁盘 | 2 GB 可用空间，建议 SSD | 2 GB 可用空间，建议 SSD | 10 GB 起，推荐 30 GB 以上 SSD 空间用于模型、RAW 监看缓存和导出 |
+| 项目 | Flash Windows | Flash macOS | Pro Windows | Pro macOS |
+| --- | --- | --- | --- | --- |
+| 系统 | Windows 10 / 11 64 位 | macOS 12 Monterey 或更高，推荐 macOS 13 及以上 | Windows 10 / 11 64 位，推荐 Windows 11 | macOS 12 Monterey 或更高，推荐 macOS 13 及以上 |
+| 架构 | x64 | Apple Silicon 使用 arm64 包；Intel Mac 使用 x64 包 | x64 | Apple Silicon 使用 arm64 包；Intel Mac 使用 x64 包 |
+| CPU | 4 核起，推荐 8 核或更高 | Apple Silicon，或 4 核及以上 Intel 处理器 | 8 核起，推荐 12 核或更高 | Apple Silicon，或 6 核及以上 Intel 处理器 |
+| 内存 | 8 GB 起，推荐 16 GB | 8 GB 起，推荐 16 GB | 16 GB 起，推荐 32 GB 或更高 | 16 GB 起，推荐 32 GB 或更高 |
+| 显卡 | 无独显要求，集成显卡可运行 | 无独显要求，使用系统图形与 WebKit | NVIDIA GTX 1660 / RTX 2060 / RTX 3050 及以上可用，推荐 RTX 3060 / RTX 4060 及以上；无独显时可 CPU 兜底但会更慢 | 无独显要求，使用系统图形与 WebKit；Pro RAW 监看会占用更多资源 |
+| 磁盘 | 2 GB 可用空间，建议 SSD | 2 GB 可用空间，建议 SSD | 10 GB 起，推荐 30 GB 以上 SSD 空间用于模型、RAW 监看缓存和导出 | 15 GB 起，推荐 30 GB 以上 SSD 空间用于内置 RawTherapee、模型、RAW 缓存和导出 |
 
 ### 🧩 核心能力
 
@@ -122,7 +131,7 @@ Pro 引擎会输出美学、场景、persona 等多头分数，帮助判断户�
 
 ### 🚧 当前状态
 
-FrameCull AI 仍处于内测阶段。Windows 安装包和 macOS Flash 双架构测试包已可下载；macOS 测试包尚未公证，首次打开请按上方教程操作。欢迎反馈真实筛片需求、测试样片和工作流建议。
+FrameCull AI 仍处于内测阶段。Windows Flash/Pro x64 安装包和 macOS Flash/Pro 双架构测试包均已开放下载。macOS 测试包尚未签名和公证，首次打开请按上方教程操作。欢迎反馈真实筛片需求、测试样片和工作流建议。
 
 ### 📮 联系作者
 
@@ -148,36 +157,44 @@ Choose Flash if you mainly review JPGs or embedded RAW previews and care most ab
 
 ### 📦 Download
 
-Windows release:  
+Latest UI update test builds:
+[Flash 0.1.6 prerelease](https://github.com/Ray25010/Frame-Cull-AI/releases/tag/flash-ui-0.1.6-run-32216774744) · [Pro 0.1.6 prerelease](https://github.com/Ray25010/Frame-Cull-AI/releases/tag/pro-ui-0.1.6-run-32216774744)
 
-- [Download Flash for Windows](https://github.com/Ray25010/Frame-Cull-AI/releases/download/v0.1.6-beta.2/FrameCull.AI.Flash_0.1.6-beta.2_x64-setup.exe)
-- [Download Pro for Windows](https://github.com/Ray25010/Frame-Cull-AI/releases/download/v0.1.6-beta.2/FrameCull.AI.Pro_0.1.6-beta.2_x64-setup.exe)
+#### Windows
 
-#### macOS Flash 0.1.6 test build
+- [Flash x64 EXE](https://github.com/Ray25010/Frame-Cull-AI/releases/download/flash-ui-0.1.6-run-32216774744/FrameCull-Flash-Windows-x64-FrameCull.AI.Flash_0.1.6_x64-setup.exe) · [Flash x64 MSI](https://github.com/Ray25010/Frame-Cull-AI/releases/download/flash-ui-0.1.6-run-32216774744/FrameCull-Flash-Windows-x64-FrameCull.AI.Flash_0.1.6_x64_en-US.msi)
+- [Pro x64 EXE](https://github.com/Ray25010/Frame-Cull-AI/releases/download/pro-ui-0.1.6-run-32216774744/FrameCull-Pro-Windows-x64-FrameCull.AI.Pro_0.1.6_x64-setup.exe) · [Pro x64 MSI](https://github.com/Ray25010/Frame-Cull-AI/releases/download/pro-ui-0.1.6-run-32216774744/FrameCull-Pro-Windows-x64-FrameCull.AI.Pro_0.1.6_x64_en-US.msi)
 
+#### macOS
 
-- [Download arm64 for Apple Silicon (M1 / M2 / M3 / M4 and later)](https://github.com/Ray25010/Frame-Cull-AI/releases/download/macos-test-0.1.6-run-29097861619/FrameCull-macOS-arm64.zip)
-- [Download x64 for Intel Macs](https://github.com/Ray25010/Frame-Cull-AI/releases/download/macos-test-0.1.6-run-29097861619/FrameCull-macOS-x64.zip)
+- [Flash Apple Silicon arm64](https://github.com/Ray25010/Frame-Cull-AI/releases/download/flash-ui-0.1.6-run-32216774744/FrameCull-Flash-macOS-arm64-FrameCull.AI.Flash_0.1.6_aarch64.dmg) · [Flash Intel x64](https://github.com/Ray25010/Frame-Cull-AI/releases/download/flash-ui-0.1.6-run-32216774744/FrameCull-Flash-macOS-x64-FrameCull.AI.Flash_0.1.6_x64.dmg)
+- [Pro Apple Silicon arm64](https://github.com/Ray25010/Frame-Cull-AI/releases/download/pro-ui-0.1.6-run-32216774744/FrameCull-Pro-macOS-arm64-FrameCull.AI.Pro_0.1.6_aarch64.dmg) · [Pro Intel x64](https://github.com/Ray25010/Frame-Cull-AI/releases/download/pro-ui-0.1.6-run-32216774744/FrameCull-Pro-macOS-x64-FrameCull.AI.Pro_0.1.6_x64.dmg)
 
-> The macOS test packages are not notarized with Apple Developer ID. Download them only from this repository's official Release page and choose the package that matches your Mac architecture.
+> macOS test packages are not signed or notarized with Apple Developer ID. Choose arm64 for Apple Silicon and x64 for Intel Macs. macOS Pro bundles RawTherapee 5.12, so no separate installation or authorization is required. This build does not include Beauty features or UI.
 
 ### 📚 Docs
 
 - [FrameCull AI Flash v0.1.6 guide on WPS Docs](https://www.kdocs.cn/l/ckvgLtjq13lO)
 - [FrameCull AI Pro v0.1.6 guide on WPS Docs](https://www.kdocs.cn/l/ck6O3N1pAKlA)
-- [Bundled macOS Flash installation guide](tools/macos/README-macOS-first-launch.txt)
+- [macOS Flash installation guide](https://www.kdocs.cn/l/csMm8cw85pTP)
 
+#### macOS installation notes
+
+1. Download the `arm64` DMG for Apple Silicon or the `x64` DMG for an Intel Mac.
+2. Open the DMG and drag FrameCull AI Flash or FrameCull AI Pro into Applications.
+3. If macOS cannot verify the developer, right-click the app in Finder, choose Open, and confirm once more.
+4. Pro bundles RawTherapee 5.12. No separate RawTherapee installation or authorization is required.
 
 ### 💻 Requirements
 
-| Item | Flash Windows | Flash macOS | Pro Windows |
-| --- | --- | --- | --- |
-| OS | Windows 10 / 11 64-bit | macOS 12 Monterey or later recommended for testing; macOS 13 or later preferred | Windows 10 / 11 64-bit, Windows 11 recommended |
-| Architecture | x64 | Use the arm64 package on Apple Silicon and the x64 package on Intel Macs | x64 |
-| CPU | 4 cores minimum, 8+ cores recommended | Apple Silicon, or a 4-core or better Intel processor | 8 cores minimum, 12+ cores recommended |
-| Memory | 8 GB minimum, 16 GB recommended | 8 GB minimum, 16 GB recommended | 16 GB minimum, 32 GB or more recommended |
-| GPU | No discrete GPU required | No discrete GPU required; uses system graphics and WebKit | NVIDIA GTX 1660 / RTX 2060 / RTX 3050 or above; RTX 3060 / RTX 4060 or above recommended. CPU fallback is available but slower |
-| Disk | 2 GB free space, SSD recommended | 2 GB free space, SSD recommended | 10 GB minimum, 30 GB or more SSD space recommended for models, RAW preview cache, and exports |
+| Item | Flash Windows | Flash macOS | Pro Windows | Pro macOS |
+| --- | --- | --- | --- | --- |
+| OS | Windows 10 / 11 64-bit | macOS 12 Monterey or later; macOS 13 or later preferred | Windows 10 / 11 64-bit, Windows 11 recommended | macOS 12 Monterey or later; macOS 13 or later preferred |
+| Architecture | x64 | Use the arm64 package on Apple Silicon and the x64 package on Intel Macs | x64 | Use the arm64 package on Apple Silicon and the x64 package on Intel Macs |
+| CPU | 4 cores minimum, 8+ cores recommended | Apple Silicon, or a 4-core or better Intel processor | 8 cores minimum, 12+ cores recommended | Apple Silicon, or a 6-core or better Intel processor |
+| Memory | 8 GB minimum, 16 GB recommended | 8 GB minimum, 16 GB recommended | 16 GB minimum, 32 GB or more recommended | 16 GB minimum, 32 GB or more recommended |
+| GPU | No discrete GPU required | No discrete GPU required; uses system graphics and WebKit | NVIDIA GTX 1660 / RTX 2060 / RTX 3050 or above; RTX 3060 / RTX 4060 or above recommended. CPU fallback is available but slower | No discrete GPU required; uses system graphics and WebKit. Pro RAW monitoring uses more resources |
+| Disk | 2 GB free space, SSD recommended | 2 GB free space, SSD recommended | 10 GB minimum, 30 GB or more SSD space recommended for models, RAW preview cache, and exports | 15 GB minimum, 30 GB or more SSD space recommended for bundled RawTherapee, models, RAW cache, and exports |
 
 ### 🧩 Core Features
 
@@ -223,7 +240,7 @@ The Pro engine produces aesthetic, scene, and persona scores for AI Pick ranking
 
 ### 🚧 Status
 
-FrameCull AI is currently in beta. Windows installers and dual-architecture macOS Flash test packages are available. The macOS packages are not notarized, so follow the installation steps above for first launch.
+FrameCull AI is currently in beta. Windows Flash/Pro x64 installers and dual-architecture macOS Flash/Pro test packages are available. The macOS packages are not signed or notarized, so follow the installation steps above for first launch.
 
 Feedback on real culling needs, test samples, and workflow improvements is welcome.
 
