@@ -48,8 +48,6 @@ Flash 版本轻量快速，可在核显机型上流畅运行；Pro 版本则提�
 
 ### 📦 下载
 
-最新 UI 更新测试版：
-[Flash 0.1.6 prerelease](https://github.com/Ray25010/Frame-Cull-AI/releases/tag/flash-ui-0.1.6-run-32216774744) · [Pro 0.1.6 prerelease](https://github.com/Ray25010/Frame-Cull-AI/releases/tag/pro-ui-0.1.6-run-32216774744)
 
 #### Windows
 
