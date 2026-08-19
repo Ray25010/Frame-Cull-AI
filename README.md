@@ -61,20 +61,14 @@ Flash 版本轻量快速，可在核显机型上流畅运行；Pro 版本则提�
 - [Flash Apple Silicon arm64](https://github.com/Ray25010/Frame-Cull-AI/releases/download/flash-ui-0.1.6-run-32216774744/FrameCull-Flash-macOS-arm64-FrameCull.AI.Flash_0.1.6_aarch64.dmg) · [Flash Intel x64](https://github.com/Ray25010/Frame-Cull-AI/releases/download/flash-ui-0.1.6-run-32216774744/FrameCull-Flash-macOS-x64-FrameCull.AI.Flash_0.1.6_x64.dmg)
 - [Pro Apple Silicon arm64](https://github.com/Ray25010/Frame-Cull-AI/releases/download/pro-ui-0.1.6-run-32216774744/FrameCull-Pro-macOS-arm64-FrameCull.AI.Pro_0.1.6_aarch64.dmg) · [Pro Intel x64](https://github.com/Ray25010/Frame-Cull-AI/releases/download/pro-ui-0.1.6-run-32216774744/FrameCull-Pro-macOS-x64-FrameCull.AI.Pro_0.1.6_x64.dmg)
 
-> macOS 测试包尚未经过 Apple Developer ID 签名和公证。Apple Silicon Mac 请选择 arm64，Intel Mac 请选择 x64。macOS Pro 已内置 RawTherapee 5.12，无需另外安装或授权。本轮不包含 Beauty/美颜功能和 UI。
+> macOS 测试包尚未经过 Apple Developer ID 签名和公证。Apple Silicon Mac 请选择 arm64，Intel Mac 请选择 x64。macOS Pro 已内置 RawTherapee 5.12，无需另外安装或授权。
 
 ### 📚 文档与教程
 
 - [FrameCull AI Flash v0.1.6 简介及教程](https://www.kdocs.cn/l/ckvgLtjq13lO)
 - [FrameCull AI Pro v0.1.6 简介及使用教程](https://www.kdocs.cn/l/ck6O3N1pAKlA)
-- [macOS Flash 安装教程](https://www.kdocs.cn/l/csMm8cw85pTP)
+- [macOS 安装教程](https://www.kdocs.cn/l/csMm8cw85pTP)
 
-#### macOS 安装提示
-
-1. 根据 Mac 芯片下载 `arm64` 或 `x64` DMG。
-2. 打开 DMG，将 FrameCull AI Flash 或 FrameCull AI Pro 拖入 Applications（应用程序）。
-3. 如果 macOS 提示无法验证开发者，请在 Finder 的 Applications 中右键应用，选择“打开”，再确认一次。
-4. Pro 版已经内置 RawTherapee 5.12，不需要单独安装 RawTherapee，也不需要额外授权。
 
 ### 💻 系统要求
 
