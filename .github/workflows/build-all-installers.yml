@@ -4,6 +4,17 @@ permissions:
   contents: read
 
 on:
+  push:
+    branches:
+      - "codex/**"
+    paths:
+      - ".github/workflows/build-all-installers.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "public/**"
+      - "src/**"
+      - "src-tauri/**"
+      - "tools/check-all-installers-contract.mjs"
   workflow_dispatch:
     inputs:
       ref:
