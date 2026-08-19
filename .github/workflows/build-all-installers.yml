@@ -83,7 +83,8 @@ jobs:
           if ((Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant() -ne $manifest.sha256.ToLowerInvariant()) {
             throw 'RawTherapee archive SHA256 mismatch.'
           }
-          $destination = 'src-tauri/vendor/rawtherapee'
+          $destination = 'src-tauri/vendor/rawtherapee/windows-x64'
+          New-Item -ItemType Directory -Path $destination -Force | Out-Null
           Expand-Archive -Path $archive -DestinationPath $destination -Force
           $cli = Join-Path $destination $manifest.cliRelativePath
           if (-not (Test-Path -LiteralPath $cli -PathType Leaf)) {
@@ -225,7 +226,7 @@ jobs:
           test -x "${payload}/rawtherapee-cli"
           mount_point="${RUNNER_TEMP}/rawtherapee-mount"
           mkdir -p "${mount_point}"
-          /usr/bin/hdiutil attach -nobrowse -readonly -mountpoint "${mount_point}" "${payload}/RawTherapee_macOS_15.4_Universal_5.12.dmg"
+          /usr/bin/printf 'Y\n' | /usr/bin/hdiutil attach -nobrowse -readonly -mountpoint "${mount_point}" "${payload}/RawTherapee_macOS_15.4_Universal_5.12.dmg"
           trap '/usr/bin/hdiutil detach "${mount_point}" -force >/dev/null 2>&1 || true' EXIT
           test -d "${mount_point}/RawTherapee.app"
           /usr/bin/ditto "${mount_point}/RawTherapee.app" "src-tauri/vendor/rawtherapee/macos-universal/RawTherapee.app"

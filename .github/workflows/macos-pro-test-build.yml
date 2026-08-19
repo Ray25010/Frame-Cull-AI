@@ -163,7 +163,7 @@ jobs:
 
           mount_point="${RUNNER_TEMP}/rawtherapee-mount"
           mkdir -p "${mount_point}"
-          device="$(/usr/bin/hdiutil attach -nobrowse -readonly -mountpoint "${mount_point}" "${payload}/RawTherapee_macOS_15.4_Universal_5.12.dmg" | awk 'END { print $1 }')"
+          /usr/bin/printf 'Y\n' | /usr/bin/hdiutil attach -nobrowse -readonly -mountpoint "${mount_point}" "${payload}/RawTherapee_macOS_15.4_Universal_5.12.dmg"
           trap '/usr/bin/hdiutil detach "${mount_point}" -force >/dev/null 2>&1 || true' EXIT
           test -d "${mount_point}/RawTherapee.app"
           /usr/bin/ditto "${mount_point}/RawTherapee.app" "src-tauri/vendor/rawtherapee/macos-universal/RawTherapee.app"
