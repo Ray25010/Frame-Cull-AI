@@ -1,7 +1,7 @@
 name: Build All Installers
 
 permissions:
-  contents: read
+  contents: write
 
 on:
   push:
@@ -261,3 +261,56 @@ jobs:
           path: ${{ steps.stage.outputs.stage_path }}
           if-no-files-found: error
           retention-days: 14
+
+  publish-flash-prerelease:
+    name: Publish Flash prerelease
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Flash artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: FrameCull-Flash-*
+          path: packages
+          merge-multiple: false
+
+      - name: Prepare release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          while IFS= read -r -d '' file; do
+            parent="$(basename "$(dirname "${file}")")"
+            name="$(basename "${file}")"
+            case "${name}" in
+              SHA256SUMS.txt) name="${parent}-SHA256SUMS.txt" ;;
+            esac
+            cp "${file}" "release-assets/${parent}-${name}"
+          done < <(find packages -type f \( -name '*.exe' -o -name '*.msi' -o -name '*.dmg' -o -name 'SHA256SUMS.txt' \) -print0)
+          test -n "$(find release-assets -type f -print -quit)"
+          sha256sum release-assets/*
+
+      - name: Publish Flash prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="flash-ui-0.1.6-run-${GITHUB_RUN_ID}"
+          notes="${RUNNER_TEMP}/flash-release-notes.md"
+          cat > "${notes}" <<EOF
+          # FrameCull AI Flash 0.1.6 UI 更新测试版
+
+          本 prerelease 来自 GitHub Actions Run ${GITHUB_RUN_ID}，提交 `${GITHUB_SHA}`。
+
+          - Windows x64、macOS arm64、macOS x64 安装包均由同一构建矩阵生成。
+          - 本轮只包含已审计的非 Beauty UI 优化；美颜/Beauty 功能和 UI 未进入安装包。
+          - macOS Pro 同一矩阵已完成 arm64/x64 构建与内置 RawTherapee 结构验证，但按要求不发布 Pro。
+          - macOS 测试包未进行 Apple Developer ID 签名和公证。
+          EOF
+          gh release create "${tag}" release-assets/* \
+            --repo "${GITHUB_REPOSITORY}" \
+            --prerelease \
+            --target "${GITHUB_SHA}" \
+            --title "FrameCull AI Flash 0.1.6 UI 更新测试版（Run ${GITHUB_RUN_ID}）" \
+            --notes-file "${notes}"
