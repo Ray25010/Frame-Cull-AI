@@ -1,0 +1,222 @@
+name: Build All Installers
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Commit, branch, or tag to build. Empty uses the dispatched commit.
+        required: false
+        type: string
+
+env:
+  CI: true
+  FRAMECULL_BUILD_REF: ${{ inputs.ref || github.sha }}
+
+jobs:
+  build-windows:
+    name: Windows ${{ matrix.label }} x64
+    runs-on: windows-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - edition: flash
+            label: Flash
+            config: src-tauri/tauri.flash.conf.json
+            features: ""
+          - edition: pro
+            label: Pro
+            config: src-tauri/tauri.pro.conf.json
+            features: "--features pro"
+
+    steps:
+      - name: Checkout requested ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.FRAMECULL_BUILD_REF }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate edition and Beauty exclusion contract
+        run: node tools/check-all-installers-contract.mjs --edition ${{ matrix.edition }} --platform windows
+
+      - name: Prepare pinned Windows RawTherapee
+        if: matrix.edition == 'pro'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $manifest = Get-Content src-tauri/vendor/rawtherapee/rawtherapee-5.12-win64.json | ConvertFrom-Json
+          $archive = Join-Path $env:RUNNER_TEMP $manifest.artifact
+          Invoke-WebRequest -Uri $manifest.sourceUrl -OutFile $archive
+          if ((Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant() -ne $manifest.sha256.ToLowerInvariant()) {
+            throw 'RawTherapee archive SHA256 mismatch.'
+          }
+          $destination = 'src-tauri/vendor/rawtherapee'
+          Expand-Archive -Path $archive -DestinationPath $destination -Force
+          $cli = Join-Path $destination $manifest.cliRelativePath
+          if (-not (Test-Path -LiteralPath $cli -PathType Leaf)) {
+            throw "RawTherapee CLI missing after extraction: $cli"
+          }
+
+      - name: Build installer
+        shell: pwsh
+        run: pnpm exec tauri build ${{ matrix.features }} --config ${{ matrix.config }} --target x86_64-pc-windows-msvc
+
+      - name: Stage installers and checksums
+        id: stage
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $stage = Join-Path $env:RUNNER_TEMP "FrameCull-${{ matrix.label }}-Windows-x64"
+          New-Item -ItemType Directory -Path $stage -Force | Out-Null
+          $bundle = 'src-tauri/target/x86_64-pc-windows-msvc/release/bundle'
+          $installers = Get-ChildItem -Path $bundle -Recurse -File -Include *.exe,*.msi
+          if ($installers.Count -eq 0) { throw "No Windows installers found in $bundle" }
+          $installers | Copy-Item -Destination $stage
+          Get-ChildItem -Path $stage -File | Get-FileHash -Algorithm SHA256 | ForEach-Object {
+            "{0}  {1}" -f $_.Hash.ToLowerInvariant(), $_.Path.Split([IO.Path]::DirectorySeparatorChar)[-1]
+          } | Set-Content (Join-Path $stage 'SHA256SUMS.txt')
+          "stage_path=$stage" >> $env:GITHUB_OUTPUT
+
+      - name: Upload installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: FrameCull-${{ matrix.label }}-Windows-x64
+          path: ${{ steps.stage.outputs.stage_path }}
+          if-no-files-found: error
+          retention-days: 14
+
+  build-macos:
+    name: macOS ${{ matrix.label }} ${{ matrix.arch }}
+    runs-on: macos-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - edition: flash
+            label: Flash
+            arch: arm64
+            rust_target: aarch64-apple-darwin
+            config: src-tauri/tauri.flash.conf.json
+            features: ""
+          - edition: flash
+            label: Flash
+            arch: x64
+            rust_target: x86_64-apple-darwin
+            config: src-tauri/tauri.flash.conf.json
+            features: ""
+          - edition: pro
+            label: Pro
+            arch: arm64
+            rust_target: aarch64-apple-darwin
+            config: src-tauri/tauri.pro.macos.conf.json
+            features: "--features pro"
+          - edition: pro
+            label: Pro
+            arch: x64
+            rust_target: x86_64-apple-darwin
+            config: src-tauri/tauri.pro.macos.x64.conf.json
+            features: "--features pro"
+
+    steps:
+      - name: Checkout requested ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.FRAMECULL_BUILD_REF }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_target }}
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate edition and Beauty exclusion contract
+        run: node tools/check-all-installers-contract.mjs --edition ${{ matrix.edition }} --platform macos
+
+      - name: Prepare pinned Intel ONNX Runtime
+        if: matrix.edition == 'pro' && matrix.arch == 'x64'
+        shell: bash
+        run: |
+          set -euo pipefail
+          manifest="src-tauri/vendor/onnxruntime/onnxruntime-1.23.2-macos-x64.json"
+          version="$(node -e 'const m=JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8")); process.stdout.write(m.version)' "${manifest}")"
+          source_url="$(node -e 'const m=JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8")); process.stdout.write(m.sourceUrl)' "${manifest}")"
+          expected_sha="$(node -e 'const m=JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8")); process.stdout.write(m.sha256)' "${manifest}")"
+          dylib="$(node -e 'const m=JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8")); process.stdout.write(m.dylib)' "${manifest}")"
+          archive="${RUNNER_TEMP}/onnxruntime-${version}.tgz"
+          extracted="${RUNNER_TEMP}/onnxruntime"
+          runtime_root="${extracted}/onnxruntime-osx-x86_64-${version}"
+          destination="src-tauri/vendor/onnxruntime/macos-x64"
+          curl --fail --location --retry 3 --output "${archive}" "${source_url}"
+          echo "${expected_sha}  ${archive}" | /usr/bin/shasum -a 256 --check
+          mkdir -p "${extracted}" "${destination}"
+          tar -xzf "${archive}" -C "${extracted}"
+          cp -L "${runtime_root}/lib/${dylib}" "${destination}/${dylib}"
+          cp "${runtime_root}/LICENSE" "${destination}/LICENSE"
+          cp "${runtime_root}/ThirdPartyNotices.txt" "${destination}/ThirdPartyNotices.txt"
+          cp "${runtime_root}/VERSION_NUMBER" "${destination}/VERSION_NUMBER"
+          echo "ORT_LIB_LOCATION=${runtime_root}/lib" >> "${GITHUB_ENV}"
+          echo "ORT_PREFER_DYNAMIC_LINK=1" >> "${GITHUB_ENV}"
+          echo 'CARGO_TARGET_X86_64_APPLE_DARWIN_RUSTFLAGS=-C link-arg=-Wl,-rpath,@executable_path/../Frameworks' >> "${GITHUB_ENV}"
+
+      - name: Build installer
+        run: pnpm exec tauri build ${{ matrix.features }} --config "${{ matrix.config }}" --target "${{ matrix.rust_target }}"
+
+      - name: Stage installer and checksum
+        id: stage
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle="src-tauri/target/${{ matrix.rust_target }}/release/bundle/dmg"
+          stage="${RUNNER_TEMP}/FrameCull-${{ matrix.label }}-macOS-${{ matrix.arch }}"
+          mkdir -p "${stage}"
+          find "${bundle}" -maxdepth 1 -type f -name '*.dmg' -exec cp {} "${stage}/" \;
+          test "$(find "${stage}" -maxdepth 1 -type f -name '*.dmg' -print -quit)"
+          (
+            cd "${stage}"
+            /usr/bin/shasum -a 256 ./*.dmg > SHA256SUMS.txt
+          )
+          echo "stage_path=${stage}" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: FrameCull-${{ matrix.label }}-macOS-${{ matrix.arch }}
+          path: ${{ steps.stage.outputs.stage_path }}
+          if-no-files-found: error
+          retention-days: 14
