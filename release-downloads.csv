@@ -232,3 +232,22 @@ date,captured_at,release_tag,release_name,is_prerelease,asset_id,asset_name,size
 2026-08-21,2026-08-21T01:59:46.481Z,v0.1.6-beta.2,FrameCull AI 0.1.6 Beta 2,true,471646134,FrameCull.AI.Flash_0.1.6-beta.2_x64-setup.exe,69454678,9,1,existing
 2026-08-21,2026-08-21T01:59:46.481Z,v0.1.6-beta.2,FrameCull AI 0.1.6 Beta 2,true,471646133,FrameCull.AI.Pro_0.1.6-beta.2_x64-setup.exe,147200046,7,1,existing
 2026-08-21,2026-08-21T01:59:46.481Z,v0.1.6-beta.2,FrameCull AI 0.1.6 Beta 2,true,471646136,FrameCull.AI.Pro_0.1.6-beta.2_x64.msi,297022088,0,0,existing
+2026-08-22,2026-08-22T01:52:30.632Z,flash-ui-0.1.6-run-32216774744,FrameCull AI Flash 0.1.6 UI 更新测试版（Run 32216774744）,true,520409006,FrameCull-Flash-macOS-arm64-FrameCull-Flash-macOS-arm64-SHA256SUMS.txt,105,0,0,existing
+2026-08-22,2026-08-22T01:52:30.632Z,flash-ui-0.1.6-run-32216774744,FrameCull AI Flash 0.1.6 UI 更新测试版（Run 32216774744）,true,520409003,FrameCull-Flash-macOS-arm64-FrameCull.AI.Flash_0.1.6_aarch64.dmg,70686918,0,0,existing
+2026-08-22,2026-08-22T01:52:30.632Z,flash-ui-0.1.6-run-32216774744,FrameCull AI Flash 0.1.6 UI 更新测试版（Run 32216774744）,true,520409016,FrameCull-Flash-macOS-x64-FrameCull-Flash-macOS-x64-SHA256SUMS.txt,101,0,0,existing
+2026-08-22,2026-08-22T01:52:30.632Z,flash-ui-0.1.6-run-32216774744,FrameCull AI Flash 0.1.6 UI 更新测试版（Run 32216774744）,true,520409009,FrameCull-Flash-macOS-x64-FrameCull.AI.Flash_0.1.6_x64.dmg,70288567,0,0,existing
+2026-08-22,2026-08-22T01:52:30.632Z,flash-ui-0.1.6-run-32216774744,FrameCull AI Flash 0.1.6 UI 更新测试版（Run 32216774744）,true,520409002,FrameCull-Flash-Windows-x64-FrameCull-Flash-Windows-x64-SHA256SUMS.txt,212,0,0,existing
+2026-08-22,2026-08-22T01:52:30.632Z,flash-ui-0.1.6-run-32216774744,FrameCull AI Flash 0.1.6 UI 更新测试版（Run 32216774744）,true,520409005,FrameCull-Flash-Windows-x64-FrameCull.AI.Flash_0.1.6_x64_en-US.msi,68329472,0,0,existing
+2026-08-22,2026-08-22T01:52:30.632Z,flash-ui-0.1.6-run-32216774744,FrameCull AI Flash 0.1.6 UI 更新测试版（Run 32216774744）,true,520409001,FrameCull-Flash-Windows-x64-FrameCull.AI.Flash_0.1.6_x64-setup.exe,67592433,0,0,existing
+2026-08-22,2026-08-22T01:52:30.632Z,macos-test-0.1.6-run-29097861619,FrameCull AI Flash macOS 测试版 0.1.6,true,474239920,FrameCull-macOS-arm64.zip,70209078,17,0,existing
+2026-08-22,2026-08-22T01:52:30.632Z,macos-test-0.1.6-run-29097861619,FrameCull AI Flash macOS 测试版 0.1.6,true,474239921,FrameCull-macOS-x64.zip,70853683,2,0,existing
+2026-08-22,2026-08-22T01:52:30.632Z,pro-ui-0.1.6-run-32216774744,FrameCull AI Pro 0.1.6 UI 更新测试版（Run 32216774744）,true,520418965,FrameCull-Pro-macOS-arm64-FrameCull-Pro-macOS-arm64-SHA256SUMS.txt,103,0,0,existing
+2026-08-22,2026-08-22T01:52:30.632Z,pro-ui-0.1.6-run-32216774744,FrameCull AI Pro 0.1.6 UI 更新测试版（Run 32216774744）,true,520418964,FrameCull-Pro-macOS-arm64-FrameCull.AI.Pro_0.1.6_aarch64.dmg,278323385,0,0,existing
+2026-08-22,2026-08-22T01:52:30.632Z,pro-ui-0.1.6-run-32216774744,FrameCull AI Pro 0.1.6 UI 更新测试版（Run 32216774744）,true,520418973,FrameCull-Pro-macOS-x64-FrameCull-Pro-macOS-x64-SHA256SUMS.txt,99,0,0,existing
+2026-08-22,2026-08-22T01:52:30.632Z,pro-ui-0.1.6-run-32216774744,FrameCull AI Pro 0.1.6 UI 更新测试版（Run 32216774744）,true,520418972,FrameCull-Pro-macOS-x64-FrameCull.AI.Pro_0.1.6_x64.dmg,282385865,0,0,existing
+2026-08-22,2026-08-22T01:52:30.632Z,pro-ui-0.1.6-run-32216774744,FrameCull AI Pro 0.1.6 UI 更新测试版（Run 32216774744）,true,520418963,FrameCull-Pro-Windows-x64-FrameCull-Pro-Windows-x64-SHA256SUMS.txt,208,0,0,existing
+2026-08-22,2026-08-22T01:52:30.632Z,pro-ui-0.1.6-run-32216774744,FrameCull AI Pro 0.1.6 UI 更新测试版（Run 32216774744）,true,520418967,FrameCull-Pro-Windows-x64-FrameCull.AI.Pro_0.1.6_x64_en-US.msi,337457768,0,0,existing
+2026-08-22,2026-08-22T01:52:30.632Z,pro-ui-0.1.6-run-32216774744,FrameCull AI Pro 0.1.6 UI 更新测试版（Run 32216774744）,true,520418968,FrameCull-Pro-Windows-x64-FrameCull.AI.Pro_0.1.6_x64-setup.exe,143369261,2,0,existing
+2026-08-22,2026-08-22T01:52:30.632Z,v0.1.6-beta.2,FrameCull AI 0.1.6 Beta 2,true,471646134,FrameCull.AI.Flash_0.1.6-beta.2_x64-setup.exe,69454678,9,0,existing
+2026-08-22,2026-08-22T01:52:30.632Z,v0.1.6-beta.2,FrameCull AI 0.1.6 Beta 2,true,471646133,FrameCull.AI.Pro_0.1.6-beta.2_x64-setup.exe,147200046,7,0,existing
+2026-08-22,2026-08-22T01:52:30.632Z,v0.1.6-beta.2,FrameCull AI 0.1.6 Beta 2,true,471646136,FrameCull.AI.Pro_0.1.6-beta.2_x64.msi,297022088,0,0,existing
