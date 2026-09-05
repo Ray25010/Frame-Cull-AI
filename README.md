@@ -3,10 +3,10 @@
 > 此分支由 GitHub Actions 每日自动更新，请勿手工修改生成文件。
 
 - 仓库：`Ray25010/Frame-Cull-AI`
-- 统计日期：`2026-09-04`
-- 采集时间：`2026-09-04T04:39:47.240Z`
+- 统计日期：`2026-09-05`
+- 采集时间：`2026-09-05T04:35:44.766Z`
 - 当前资产累计下载次数：**59**
-- 本次记录新增下载次数：**9**
+- 本次记录新增下载次数：**0**
 
 | Release tag | 资产 | 累计下载 | 本次新增 | 状态 |
 | --- | --- | ---: | ---: | --- |
@@ -16,7 +16,7 @@
 | flash-ui-0.1.6-run-32216774744 | FrameCull-Flash-macOS-x64-FrameCull.AI.Flash_0.1.6_x64.dmg | 0 | +0 | existing |
 | flash-ui-0.1.6-run-32216774744 | FrameCull-Flash-Windows-x64-FrameCull-Flash-Windows-x64-SHA256SUMS.txt | 0 | +0 | existing |
 | flash-ui-0.1.6-run-32216774744 | FrameCull-Flash-Windows-x64-FrameCull.AI.Flash_0.1.6_x64_en-US.msi | 1 | +0 | existing |
-| flash-ui-0.1.6-run-32216774744 | FrameCull-Flash-Windows-x64-FrameCull.AI.Flash_0.1.6_x64-setup.exe | 11 | +7 | existing |
+| flash-ui-0.1.6-run-32216774744 | FrameCull-Flash-Windows-x64-FrameCull.AI.Flash_0.1.6_x64-setup.exe | 11 | +0 | existing |
 | macos-test-0.1.6-run-29097861619 | FrameCull-macOS-arm64.zip | 17 | +0 | existing |
 | macos-test-0.1.6-run-29097861619 | FrameCull-macOS-x64.zip | 2 | +0 | existing |
 | pro-ui-0.1.6-run-32216774744 | FrameCull-Pro-macOS-arm64-FrameCull-Pro-macOS-arm64-SHA256SUMS.txt | 0 | +0 | existing |
@@ -25,7 +25,7 @@
 | pro-ui-0.1.6-run-32216774744 | FrameCull-Pro-macOS-x64-FrameCull.AI.Pro_0.1.6_x64.dmg | 0 | +0 | existing |
 | pro-ui-0.1.6-run-32216774744 | FrameCull-Pro-Windows-x64-FrameCull-Pro-Windows-x64-SHA256SUMS.txt | 1 | +0 | existing |
 | pro-ui-0.1.6-run-32216774744 | FrameCull-Pro-Windows-x64-FrameCull.AI.Pro_0.1.6_x64_en-US.msi | 1 | +0 | existing |
-| pro-ui-0.1.6-run-32216774744 | FrameCull-Pro-Windows-x64-FrameCull.AI.Pro_0.1.6_x64-setup.exe | 5 | +2 | existing |
+| pro-ui-0.1.6-run-32216774744 | FrameCull-Pro-Windows-x64-FrameCull.AI.Pro_0.1.6_x64-setup.exe | 5 | +0 | existing |
 | v0.1.6-beta.2 | FrameCull.AI.Flash_0.1.6-beta.2_x64-setup.exe | 10 | +0 | existing |
 | v0.1.6-beta.2 | FrameCull.AI.Pro_0.1.6-beta.2_x64-setup.exe | 7 | +0 | existing |
 | v0.1.6-beta.2 | FrameCull.AI.Pro_0.1.6-beta.2_x64.msi | 0 | +0 | existing |
