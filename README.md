@@ -3,15 +3,15 @@
 > 此分支由 GitHub Actions 每日自动更新，请勿手工修改生成文件。
 
 - 仓库：`Ray25010/Frame-Cull-AI`
-- 统计日期：`2026-09-16`
-- 采集时间：`2026-09-16T04:54:34.148Z`
-- 当前资产累计下载次数：**73**
-- 本次记录新增下载次数：**0**
+- 统计日期：`2026-09-17`
+- 采集时间：`2026-09-17T04:57:35.482Z`
+- 当前资产累计下载次数：**74**
+- 本次记录新增下载次数：**1**
 
 | Release tag | 资产 | 累计下载 | 本次新增 | 状态 |
 | --- | --- | ---: | ---: | --- |
 | flash-ui-0.1.6-run-32216774744 | FrameCull-Flash-macOS-arm64-FrameCull-Flash-macOS-arm64-SHA256SUMS.txt | 0 | +0 | existing |
-| flash-ui-0.1.6-run-32216774744 | FrameCull-Flash-macOS-arm64-FrameCull.AI.Flash_0.1.6_aarch64.dmg | 1 | +0 | existing |
+| flash-ui-0.1.6-run-32216774744 | FrameCull-Flash-macOS-arm64-FrameCull.AI.Flash_0.1.6_aarch64.dmg | 2 | +1 | existing |
 | flash-ui-0.1.6-run-32216774744 | FrameCull-Flash-macOS-x64-FrameCull-Flash-macOS-x64-SHA256SUMS.txt | 0 | +0 | existing |
 | flash-ui-0.1.6-run-32216774744 | FrameCull-Flash-macOS-x64-FrameCull.AI.Flash_0.1.6_x64.dmg | 0 | +0 | existing |
 | flash-ui-0.1.6-run-32216774744 | FrameCull-Flash-Windows-x64-FrameCull-Flash-Windows-x64-SHA256SUMS.txt | 0 | +0 | existing |
