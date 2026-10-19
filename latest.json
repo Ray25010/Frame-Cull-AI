@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "repository": "Ray25010/Frame-Cull-AI",
-  "capturedAt": "2026-10-18T04:40:57.192Z",
-  "date": "2026-10-18",
-  "previousDate": "2026-10-17",
+  "capturedAt": "2026-10-19T04:49:07.835Z",
+  "date": "2026-10-19",
+  "previousDate": "2026-10-18",
   "totals": {
     "releaseCount": 4,
     "assetCount": 19,
     "currentDownloads": 99,
-    "downloadIncrease": 1
+    "downloadIncrease": 0
   },
   "releases": [
     {
@@ -209,7 +209,7 @@
           "name": "FrameCull-Pro-Windows-x64-FrameCull.AI.Pro_0.1.6_x64-setup.exe",
           "sizeBytes": 143369261,
           "downloadCount": 25,
-          "downloadDelta": 1,
+          "downloadDelta": 0,
           "trackingState": "existing",
           "previousAssetId": null,
           "updatedAt": "2026-08-19T05:10:05Z",
