@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "repository": "Ray25010/Frame-Cull-AI",
-  "capturedAt": "2026-10-21T04:56:32.068Z",
-  "date": "2026-10-21",
-  "previousDate": "2026-10-20",
+  "capturedAt": "2026-10-22T04:56:51.052Z",
+  "date": "2026-10-22",
+  "previousDate": "2026-10-21",
   "totals": {
     "releaseCount": 4,
     "assetCount": 19,
-    "currentDownloads": 99,
-    "downloadIncrease": 0
+    "currentDownloads": 100,
+    "downloadIncrease": 1
   },
   "releases": [
     {
@@ -89,8 +89,8 @@
           "id": 520409001,
           "name": "FrameCull-Flash-Windows-x64-FrameCull.AI.Flash_0.1.6_x64-setup.exe",
           "sizeBytes": 67592433,
-          "downloadCount": 15,
-          "downloadDelta": 0,
+          "downloadCount": 16,
+          "downloadDelta": 1,
           "trackingState": "existing",
           "previousAssetId": null,
           "updatedAt": "2026-08-19T04:57:30Z",
