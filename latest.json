@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "repository": "Ray25010/Frame-Cull-AI",
-  "capturedAt": "2026-10-24T04:43:39.061Z",
-  "date": "2026-10-24",
-  "previousDate": "2026-10-23",
+  "capturedAt": "2026-10-25T04:50:23.718Z",
+  "date": "2026-10-25",
+  "previousDate": "2026-10-24",
   "totals": {
     "releaseCount": 4,
     "assetCount": 19,
-    "currentDownloads": 101,
-    "downloadIncrease": 1
+    "currentDownloads": 103,
+    "downloadIncrease": 2
   },
   "releases": [
     {
@@ -34,8 +34,8 @@
           "id": 520409003,
           "name": "FrameCull-Flash-macOS-arm64-FrameCull.AI.Flash_0.1.6_aarch64.dmg",
           "sizeBytes": 70686918,
-          "downloadCount": 2,
-          "downloadDelta": 0,
+          "downloadCount": 3,
+          "downloadDelta": 1,
           "trackingState": "existing",
           "previousAssetId": null,
           "updatedAt": "2026-08-19T04:57:30Z",
@@ -89,8 +89,8 @@
           "id": 520409001,
           "name": "FrameCull-Flash-Windows-x64-FrameCull.AI.Flash_0.1.6_x64-setup.exe",
           "sizeBytes": 67592433,
-          "downloadCount": 16,
-          "downloadDelta": 0,
+          "downloadCount": 17,
+          "downloadDelta": 1,
           "trackingState": "existing",
           "previousAssetId": null,
           "updatedAt": "2026-08-19T04:57:30Z",
@@ -209,7 +209,7 @@
           "name": "FrameCull-Pro-Windows-x64-FrameCull.AI.Pro_0.1.6_x64-setup.exe",
           "sizeBytes": 143369261,
           "downloadCount": 26,
-          "downloadDelta": 1,
+          "downloadDelta": 0,
           "trackingState": "existing",
           "previousAssetId": null,
           "updatedAt": "2026-08-19T05:10:05Z",

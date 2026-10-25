@@ -3,20 +3,20 @@
 > 此分支由 GitHub Actions 每日自动更新，请勿手工修改生成文件。
 
 - 仓库：`Ray25010/Frame-Cull-AI`
-- 统计日期：`2026-10-24`
-- 采集时间：`2026-10-24T04:43:39.061Z`
-- 当前资产累计下载次数：**101**
-- 本次记录新增下载次数：**1**
+- 统计日期：`2026-10-25`
+- 采集时间：`2026-10-25T04:50:23.718Z`
+- 当前资产累计下载次数：**103**
+- 本次记录新增下载次数：**2**
 
 | Release tag | 资产 | 累计下载 | 本次新增 | 状态 |
 | --- | --- | ---: | ---: | --- |
 | flash-ui-0.1.6-run-32216774744 | FrameCull-Flash-macOS-arm64-FrameCull-Flash-macOS-arm64-SHA256SUMS.txt | 0 | +0 | existing |
-| flash-ui-0.1.6-run-32216774744 | FrameCull-Flash-macOS-arm64-FrameCull.AI.Flash_0.1.6_aarch64.dmg | 2 | +0 | existing |
+| flash-ui-0.1.6-run-32216774744 | FrameCull-Flash-macOS-arm64-FrameCull.AI.Flash_0.1.6_aarch64.dmg | 3 | +1 | existing |
 | flash-ui-0.1.6-run-32216774744 | FrameCull-Flash-macOS-x64-FrameCull-Flash-macOS-x64-SHA256SUMS.txt | 0 | +0 | existing |
 | flash-ui-0.1.6-run-32216774744 | FrameCull-Flash-macOS-x64-FrameCull.AI.Flash_0.1.6_x64.dmg | 0 | +0 | existing |
 | flash-ui-0.1.6-run-32216774744 | FrameCull-Flash-Windows-x64-FrameCull-Flash-Windows-x64-SHA256SUMS.txt | 0 | +0 | existing |
 | flash-ui-0.1.6-run-32216774744 | FrameCull-Flash-Windows-x64-FrameCull.AI.Flash_0.1.6_x64_en-US.msi | 3 | +0 | existing |
-| flash-ui-0.1.6-run-32216774744 | FrameCull-Flash-Windows-x64-FrameCull.AI.Flash_0.1.6_x64-setup.exe | 16 | +0 | existing |
+| flash-ui-0.1.6-run-32216774744 | FrameCull-Flash-Windows-x64-FrameCull.AI.Flash_0.1.6_x64-setup.exe | 17 | +1 | existing |
 | macos-test-0.1.6-run-29097861619 | FrameCull-macOS-arm64.zip | 18 | +0 | existing |
 | macos-test-0.1.6-run-29097861619 | FrameCull-macOS-x64.zip | 3 | +0 | existing |
 | pro-ui-0.1.6-run-32216774744 | FrameCull-Pro-macOS-arm64-FrameCull-Pro-macOS-arm64-SHA256SUMS.txt | 0 | +0 | existing |
@@ -25,7 +25,7 @@
 | pro-ui-0.1.6-run-32216774744 | FrameCull-Pro-macOS-x64-FrameCull.AI.Pro_0.1.6_x64.dmg | 1 | +0 | existing |
 | pro-ui-0.1.6-run-32216774744 | FrameCull-Pro-Windows-x64-FrameCull-Pro-Windows-x64-SHA256SUMS.txt | 2 | +0 | existing |
 | pro-ui-0.1.6-run-32216774744 | FrameCull-Pro-Windows-x64-FrameCull.AI.Pro_0.1.6_x64_en-US.msi | 2 | +0 | existing |
-| pro-ui-0.1.6-run-32216774744 | FrameCull-Pro-Windows-x64-FrameCull.AI.Pro_0.1.6_x64-setup.exe | 26 | +1 | existing |
+| pro-ui-0.1.6-run-32216774744 | FrameCull-Pro-Windows-x64-FrameCull.AI.Pro_0.1.6_x64-setup.exe | 26 | +0 | existing |
 | v0.1.6-beta.2 | FrameCull.AI.Flash_0.1.6-beta.2_x64-setup.exe | 11 | +0 | existing |
 | v0.1.6-beta.2 | FrameCull.AI.Pro_0.1.6-beta.2_x64-setup.exe | 8 | +0 | existing |
 | v0.1.6-beta.2 | FrameCull.AI.Pro_0.1.6-beta.2_x64.msi | 0 | +0 | existing |
