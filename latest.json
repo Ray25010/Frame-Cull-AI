@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "repository": "Ray25010/Frame-Cull-AI",
-  "capturedAt": "2026-11-13T06:52:40.872Z",
-  "date": "2026-11-13",
-  "previousDate": "2026-11-12",
+  "capturedAt": "2026-11-14T06:35:03.512Z",
+  "date": "2026-11-14",
+  "previousDate": "2026-11-13",
   "totals": {
     "releaseCount": 4,
     "assetCount": 19,
     "currentDownloads": 110,
-    "downloadIncrease": 2
+    "downloadIncrease": 0
   },
   "releases": [
     {
@@ -154,7 +154,7 @@
           "name": "FrameCull-Pro-macOS-arm64-FrameCull.AI.Pro_0.1.6_aarch64.dmg",
           "sizeBytes": 278323385,
           "downloadCount": 11,
-          "downloadDelta": 2,
+          "downloadDelta": 0,
           "trackingState": "existing",
           "previousAssetId": null,
           "updatedAt": "2026-08-19T05:10:18Z",
