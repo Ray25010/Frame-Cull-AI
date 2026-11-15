@@ -3,10 +3,10 @@
 > 此分支由 GitHub Actions 每日自动更新，请勿手工修改生成文件。
 
 - 仓库：`Ray25010/Frame-Cull-AI`
-- 统计日期：`2026-11-14`
-- 采集时间：`2026-11-14T06:35:03.512Z`
-- 当前资产累计下载次数：**110**
-- 本次记录新增下载次数：**0**
+- 统计日期：`2026-11-15`
+- 采集时间：`2026-11-15T06:42:27.222Z`
+- 当前资产累计下载次数：**116**
+- 本次记录新增下载次数：**6**
 
 | Release tag | 资产 | 累计下载 | 本次新增 | 状态 |
 | --- | --- | ---: | ---: | --- |
@@ -25,7 +25,7 @@
 | pro-ui-0.1.6-run-32216774744 | FrameCull-Pro-macOS-x64-FrameCull.AI.Pro_0.1.6_x64.dmg | 1 | +0 | existing |
 | pro-ui-0.1.6-run-32216774744 | FrameCull-Pro-Windows-x64-FrameCull-Pro-Windows-x64-SHA256SUMS.txt | 2 | +0 | existing |
 | pro-ui-0.1.6-run-32216774744 | FrameCull-Pro-Windows-x64-FrameCull.AI.Pro_0.1.6_x64_en-US.msi | 2 | +0 | existing |
-| pro-ui-0.1.6-run-32216774744 | FrameCull-Pro-Windows-x64-FrameCull.AI.Pro_0.1.6_x64-setup.exe | 30 | +0 | existing |
+| pro-ui-0.1.6-run-32216774744 | FrameCull-Pro-Windows-x64-FrameCull.AI.Pro_0.1.6_x64-setup.exe | 36 | +6 | existing |
 | v0.1.6-beta.2 | FrameCull.AI.Flash_0.1.6-beta.2_x64-setup.exe | 11 | +0 | existing |
 | v0.1.6-beta.2 | FrameCull.AI.Pro_0.1.6-beta.2_x64-setup.exe | 8 | +0 | existing |
 | v0.1.6-beta.2 | FrameCull.AI.Pro_0.1.6-beta.2_x64.msi | 0 | +0 | existing |
